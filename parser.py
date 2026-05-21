@@ -1,5 +1,6 @@
 from utils import Hub, Map, Drone
 import sys
+import colors
 
 def get_hub_details(value: str, is_start_or_end: bool, nb_drones: int):
     value = value.split()
@@ -38,7 +39,6 @@ def get_hub_details(value: str, is_start_or_end: bool, nb_drones: int):
                 else:
                     result[key] = val
             elif key == "max_drones":
-                print(key, val)
                 if result.get(key):
                     raise ValueError("duplicated metadata")
                 else:

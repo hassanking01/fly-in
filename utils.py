@@ -1,7 +1,6 @@
 from typing import Optional, Dict, List
-import webcolors
-import pygame
-import colors
+from colors import colors
+import random
 class Hub:
 
     def __init__(
@@ -17,8 +16,8 @@ class Hub:
         self.y = y
         self.name = name
         self.type = zone
-        self.color = colors.colors["blue"] if not colors.colors.get(color) else colors.colors[color]
-        if not colors.colors.get(color):
+        self.color = colors["blue"] if not colors.get(color) else colors[color]
+        if not colors.get(color):
             print(color)
         self.max_drones = max_drones
         self.current_drones_count = 0
@@ -55,7 +54,6 @@ class Map:
 
         self.path += [currnt]
         self.path = self.path[::-1]
-        print([i.name for i in self.path])
         for drone in self.drones:
             drone.path = self.path
             drone.pos = (drone.path[0].x, drone.path[0].x)
@@ -70,5 +68,6 @@ class Drone:
         self.next = 1
         self.pos = (0,0)
         self.done_turn = False
+        self.color = colors[random.choice(list(colors.keys()))]
         
 
