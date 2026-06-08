@@ -79,9 +79,35 @@ def get_hub_details(value: str, is_start_or_end: bool, nb_drones: int):
 
 
 def main_parser():
-    if len(sys.argv) != 2:
-        raise ValueError("invalide number of arguments")
-    map_path = sys.argv[1]
+
+    map_path = "./maps"
+    maps = {}
+    from pathlib import Path
+    folder = Path("./maps").iterdir()
+    for i in folder:
+        if i.is_dir():
+            maps[i.name] = []
+            for j in i.iterdir():
+                maps[i.name] += [j.name]
+    level = []
+    for i, key in enumerate(maps):
+        print(f"[{i}] {key}")
+        level += [key]
+    
+    answer = int(input("select level: "))
+    while answer >= len(level) or answer < 0:
+        print("wrond answer")
+        answer = int(input("select level: "))
+    level = level[answer]
+    map_path += f"/{level}"
+    for i , item in enumerate(maps[level]):
+        print(f"[{i}] {item}")
+    answer = int(input("select level: "))
+    while answer >= len(maps[level]) or answer < 0:
+        print("wrong answer")
+        answer = int(input("select a map : "))
+    map_path += f"/{maps[level][answer]}"
+    
     zone_names = set()
     coordinates = set()
     graph = {}
@@ -89,9 +115,6 @@ def main_parser():
     start_hub = None
     end_hub = None
     nb_drones = -1
-    nb_drones_flag = False
-    start_flag = False
-    end_flag = False
     required = {"start_hub", "end_hub", "hub", "connection"}
     next_start = 0
     with open(map_path, mode='r') as file:
@@ -109,7 +132,6 @@ def main_parser():
                 nb_drones = int(value)
                 if nb_drones <= 0:
                     raise ValueError(f"{nb_drones}")
-                nb_drones_flag = True
             except ValueError as e:
                 raise ValueError(f"invalid number of drones: {e}" )
             next_start = i

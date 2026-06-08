@@ -27,13 +27,6 @@ class Graphics:
         for key in self.main_map.graph:
                     nb_drones_text = self.text.render(f"{key.current_drones_count}", True, (255,100,250))
                     self.screen.blit(nb_drones_text, (key.x * 50 + self.camera_x , key.y * 100 + self.camera_y + 20))
-                    old = self.text.bold
-
-                    self.text.bold = 10
-                    type_ = self.text.render(f"{key.type}", True, (255,100,250))
-                    self.text.bold = old
-                    
-                    self.screen.blit(type_, (key.x * 50 + self.camera_x , key.y * 100 + self.camera_y + 40))
                     pygame.draw.circle(
                         self.screen,
                         key.color,

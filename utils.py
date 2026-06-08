@@ -31,6 +31,7 @@ class Map:
         self.drones: List[Drone] = [Drone() for _ in range(self.nb_drones)]
     def find_path(self):
         from collections import deque
+        import heapq
         stack = [self.start]
         stack = deque(stack)
         history = {}
@@ -56,7 +57,7 @@ class Map:
         self.path = self.path[::-1]
         for drone in self.drones:
             drone.path = self.path
-            drone.pos = (drone.path[0].x, drone.path[0].x)
+            drone.pos = (drone.path[0].x, drone.path[0].y)
 
 class Drone:
     counter = 1
