@@ -90,10 +90,10 @@ def main_parser():
             for j in i.iterdir():
                 maps[i.name] += [j.name]
     level = []
-    for i, key in enumerate(maps):
-        print(f"[{i}] {key}")
+    for key in maps:
         level += [key]
-    
+    level = sorted(level, key=lambda x: len(x))
+    print(*[f"[{i}] {key}" for i , key in enumerate(level)], sep='\n')
     answer = int(input("select level: "))
     while answer >= len(level) or answer < 0:
         print("wrond answer")
