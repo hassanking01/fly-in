@@ -1,6 +1,9 @@
 from typing import Optional, Dict, List
 from colors import colors
 import random
+import heapq
+
+
 class Hub:
 
     def __init__(
@@ -22,18 +25,22 @@ class Hub:
             print(color)
         self.max_drones = max_drones
         self.current_drones_count = 0
-
+        self.cost = float("inf")    
+    def __lt__(self, other):
+        return self.cost < other.cost
+    
 
 
 class Map:
     def __init__(self,graph: Dict[Hub,List[Hub]], start: Hub, end: Hub, nb_drones: int):
         self.graph = graph
         self.start = start
+        self.start.cost = 0
         self.end = end
         self.nb_drones = nb_drones
         self.path = []
         self.drones: List[Drone] = [Drone() for _ in range(self.nb_drones)]
-        
+        self.zone_costs = {"normal":2,"priority":1, "restricted": 3}        
     def scale_and_center_hubs(self, zoom, cx, cy):
         queue = [self.start]
         visited = set()
@@ -52,23 +59,22 @@ class Map:
         for drone in self.drones:
             drone.x = drone.current.x + (((drone.next.x - drone.current.x) * 5) / 100)
             drone.y = drone.current.y + (((drone.next.y - drone.current.y) * 5) / 100)
+
+
     def find_path(self):
-        from collections import deque
-        import heapq
-        stack = [self.start]
-        stack = deque(stack)
+        heap = [self.start]
         history = {}
         visited = set()
-
-        while stack:
-            currnt = stack.popleft()
-            if currnt in visited:
-                continue
-            visited.add(currnt)
+    
+        while heap:
+            currnt = heapq.heappop(heap)
             for neighber in self.graph[currnt]:
-                if neighber not in visited:
+                if neighber.type == "blocked":
+                    continue
+                if neighber.cost > currnt.cost + self.zone_costs[neighber.type]:
+                    neighber.cost = currnt.cost + self.zone_costs[neighber.type]
                     history[neighber] = currnt
-                    stack += [neighber]
+                    heap += [neighber]
             if self.end in self.graph[currnt]:
                 break
         currnt = self.end
@@ -78,6 +84,7 @@ class Map:
 
         self.path += [currnt]
         self.path = self.path[::-1]
+        print([zone.name for zone in self.path])
         for drone in self.drones:
             drone.path = self.path
             drone.current = self.path[0]
@@ -85,6 +92,11 @@ class Map:
             drone.x = drone.current.x
             drone.y = drone.current.y
             drone.pos = (drone.x, drone.y)
+
+
+
+
+
 class Drone:
     counter = 1
     def __init__(self):
