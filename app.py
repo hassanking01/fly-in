@@ -1,12 +1,13 @@
 import arcade
 import parser
 import warnings
+from utils import Map
 warnings.filterwarnings("ignore")
 
 
 
 class Graph(arcade.Window):
-    def __init__(self, main_map: parser.Map):
+    def __init__(self, main_map: Map):
         self.main_map = main_map
         self.main_map.find_path()
 
@@ -23,13 +24,15 @@ class Graph(arcade.Window):
         self.cx = self.width // 2
         self.cy = self.height // 2 
         self.zoom =  150
-        self.main_map.scale_and_center_hubs(self.zoom, self.cx, self.cy)
         self.hub_radius = 20
         self.puase = True
         self.sec = 0
-        self.speed = 1
+        self.speed = 0.1
+        self.main_map.scale_and_center_hubs(self.zoom, self.cx, self.cy, 0 ,0)
+
+
     def setup(self):
-        pass
+        self.main_map.set_drones(self.zoom, self.cx, self.cy)
     
     def on_update(self, delta_time):
         self.sec += delta_time
@@ -71,12 +74,12 @@ class Graph(arcade.Window):
             self.zoom += 5
             if self.hub_radius <20:
                 self.hub_radius += 0.5
-        self.main_map.scale_and_center_hubs(self.zoom, self.cx, self.cy)
+        self.main_map.scale_and_center_hubs(self.zoom, self.cx, self.cy, 0, 0)
         
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         self.cx += dx
         self.cy += dy
-        self.main_map.scale_and_center_hubs(self.zoom, self.cx, self.cy)
+        self.main_map.scale_and_center_hubs(self.zoom, self.cx, self.cy, dx, dy)
 
     def on_key_press(self, symbol, modifiers):
         if symbol == arcade.key.SPACE:
@@ -90,7 +93,7 @@ class Graph(arcade.Window):
             self.speed += 0.1
 
 def main():
-    main_map = parser.Map(**parser.main_parser())
+    main_map = Map(**parser.main_parser())
     print("\033[H\033[2J")
     window = Graph(main_map)
     window.setup()

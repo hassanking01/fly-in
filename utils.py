@@ -40,8 +40,14 @@ class Map:
         self.nb_drones = nb_drones
         self.path = []
         self.drones: List[Drone] = [Drone() for _ in range(self.nb_drones)]
-        self.zone_costs = {"normal":2,"priority":1, "restricted": 3}        
-    def scale_and_center_hubs(self, zoom, cx, cy):
+        self.zone_costs = {"normal":2,"priority":1, "restricted": 3}   
+    def set_drones(self, zoom , cx, cy):
+        for drone in self.drones:
+            drone.current = self.start
+            drone.x = drone.current.x * zoom + cx
+            drone.y = drone.current.y * zoom + cy
+             
+    def scale_and_center_hubs(self, zoom, cx, cy, move_x , move_y):
         queue = [self.start]
         visited = set()
         while queue:
@@ -55,10 +61,13 @@ class Map:
             for hub in self.graph[current]:
                 if hub not in visited:
                     queue += [hub] 
-
+        flag = False
         for drone in self.drones:
-            drone.x = drone.current.x + (((drone.next.x - drone.current.x) * 5) / 100)
-            drone.y = drone.current.y + (((drone.next.y - drone.current.y) * 5) / 100)
+            if not flag:
+                print(f"drone.x = {drone.x} drone.y = {drone.y} cx = {cx} cy {cy}")
+                flag = True
+            drone.x += move_x
+            drone.y += move_y
 
 
     def find_path(self):

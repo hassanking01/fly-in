@@ -1,12 +1,12 @@
-from utils import Hub, Map, Drone
+from utils import Hub
 import sys
-import colors
 
 def get_hub_details(value: str, is_start_or_end: bool, nb_drones: int):
     value = value.split()
-    value = list( filter( lambda x:x,  map(lambda x: x.strip(), value)))
     value = " ".join(value)
+
     value = value.split(" ", 3)
+
     name = None
     x = None
     y = None
@@ -19,6 +19,16 @@ def get_hub_details(value: str, is_start_or_end: bool, nb_drones: int):
         if "[" not in metadata or "]" not in metadata:
             raise ValueError("shi idk")
         metadata = metadata.strip("[").strip("]").split()
+        line = ""
+        for i in metadata:
+            flag = False if not line or line[-1] != "=" else True
+            if "=" in i and i != "=":
+                flag = True
+            line += i
+            if flag:
+                line += " "
+
+        metadata = line.split()
         result = {}
         
         for item in metadata:
@@ -79,34 +89,36 @@ def get_hub_details(value: str, is_start_or_end: bool, nb_drones: int):
 
 
 def main_parser():
-
-    map_path = "./maps"
-    maps = {}
-    from pathlib import Path
-    folder = Path("./maps").iterdir()
-    for i in folder:
-        if i.is_dir():
-            maps[i.name] = []
-            for j in i.iterdir():
-                maps[i.name] += [j.name]
-    level = []
-    for key in maps:
-        level += [key]
-    level = sorted(level, key=lambda x: len(x))
-    print(*[f"[{i}] {key}" for i , key in enumerate(level)], sep='\n')
-    answer = int(input("select level: "))
-    while answer >= len(level) or answer < 0:
-        print("wrond answer")
+    if len(sys.argv) == 1:
+        map_path = "./maps"
+        maps = {}
+        from pathlib import Path
+        folder = Path("./maps").iterdir()
+        for i in folder:
+            if i.is_dir():
+                maps[i.name] = []
+                for j in i.iterdir():
+                    maps[i.name] += [j.name]
+        level = []
+        for key in maps:
+            level += [key]
+        level = sorted(level, key=lambda x: len(x))
+        print(*[f"[{i}] {key}" for i , key in enumerate(level)], sep='\n')
         answer = int(input("select level: "))
-    level = level[answer]
-    map_path += f"/{level}"
-    for i , item in enumerate(maps[level]):
-        print(f"[{i}] {item}")
-    answer = int(input("select level: "))
-    while answer >= len(maps[level]) or answer < 0:
-        print("wrong answer")
-        answer = int(input("select a map : "))
-    map_path += f"/{maps[level][answer]}"
+        while answer >= len(level) or answer < 0:
+            print("wrond answer")
+            answer = int(input("select level: "))
+        level = level[answer]
+        map_path += f"/{level}"
+        for i , item in enumerate(maps[level]):
+            print(f"[{i}] {item}")
+        answer = int(input("select level: "))
+        while answer >= len(maps[level]) or answer < 0:
+            print("wrong answer")
+            answer = int(input("select a map : "))
+        map_path += f"/{maps[level][answer]}"
+    else:
+        map_path = sys.argv[1]
     
     zone_names = set()
     coordinates = set()
@@ -194,12 +206,3 @@ def main_parser():
             graph[src] += [dest]
             graph[dest] += [src]
         return {"graph":graph, "start": start_hub, "end": end_hub, "nb_drones": nb_drones}
-
-
-
-if __name__ == "__main__":
-    try:
-
-        main_parser()
-    except Exception as e:
-        print(e)

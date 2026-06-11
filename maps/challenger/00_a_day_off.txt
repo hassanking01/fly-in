@@ -2,11 +2,11 @@
 nb_drones: 93
 # ─── ZONES ──────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 # ─── ENDPOINTS ────────────────────────────────────────────────────────────────────────╮
-start_hub:    bus_station    -800 0    [zone=normal      color=gold      max_drones=100]
+start_hub:    bus_station    -800 0    [zone  =  normal      color=gold      max_drones=100]
 end_hub:      townsville      800 0    [zone=restricted  color=sapphire  max_drones=100]
 #───────────────────────────────────────────────────────────────────────────────────────╯
 # ─── LIFT INFRASTRUCTURE  ────────────────────────────────────────────────────────────╮
-hub:    lift_entry           0    0    [zone=restricted  color=amethyst  max_drones=50]
+hub:    lift_entry           0    0    [zone  =  restricted  color=amethyst  max_drones=50]
 hub:    lift_exit            0    0    [zone=restricted  color=amethyst  max_drones=50]
 hub:    gondola_ascent     100  750    [zone=restricted  color=amethyst  max_drones=04]
 hub:    gondola_discent    100  750    [zone=restricted  color=rust      max_drones=04]

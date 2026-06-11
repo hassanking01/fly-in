@@ -1,2 +1,4 @@
-all:
-	python3 app.py /home/hahchtar/Desktop/student/fly-in/maps/challenger/01_the_impossible_dream.txt
+FILE= "./fly-in/maps/challenger/01_the_impossible_dream.txt"
+
+run:
+	python3 app.py $(FILE)
