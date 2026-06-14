@@ -3,6 +3,7 @@ import parser
 import warnings
 from utils import Map
 warnings.filterwarnings("ignore")
+import arcade.resources
 
 
 
@@ -11,11 +12,12 @@ class Graph(arcade.Window):
         self.main_map = main_map
         self.main_map.find_path()
 
-        super().__init__()
+        # TODO remove this antialiasing twek
+        super().__init__(antialiasing=True)
         self.drone_texture = arcade.load_texture(
             "./images/drone.png"
         )
-        self.background_color = arcade.csscolor.DARK_RED
+        self.background_color = arcade.csscolor.DARK_GOLDENROD
         self.drone = arcade.Sprite(self.drone_texture)
         self.drone.center_x = 100
         self.drone.center_y = 100
@@ -30,17 +32,21 @@ class Graph(arcade.Window):
         self.speed = 0.1
         self.main_map.scale_and_center_hubs(self.zoom, self.cx, self.cy, 0 ,0)
 
-
     def setup(self):
         self.main_map.set_drones(self.zoom, self.cx, self.cy)
-    
+
     def on_update(self, delta_time):
         self.sec += delta_time
         if self.sec >= self.speed:
-            self.sec  = 0         
+            self.sec  = 0
             if not self.puase:
                 for drone in self.main_map.drones:
-                    drone.update(self.zoom, self.cx, self.cy)
+                    if drone.next.current_drones_count < drone.next.max_drones:
+                        drone.can_move = True
+                        if not drone.reserve_spot:
+                            drone.next.current_drones_count += 1
+                            drone.reserve_spot = True
+                    drone.update()
 
     def on_draw(self):
         self.clear()
@@ -48,16 +54,18 @@ class Graph(arcade.Window):
         for start in self.main_map.graph:
             for end in self.main_map.graph[start]:
                 arcade.draw_line(
-                    start.x ,
-                    start.y ,
-                    end.x ,
-                    end.y ,
+                    int(start.x) ,
+                    int(start.y) ,
+                    int(end.x) ,
+                    int(end.y) ,
                     arcade.csscolor.GRAY,
                     3
-                )  
+                )
         for hub in self.main_map.graph:
-            arcade.draw_circle_filled(hub.x , hub.y , self.hub_radius, hub.color)
-            arcade.draw_text(hub.name, hub.x , hub.y + 20, arcade.csscolor.DARK_BLUE, anchor_x='center')
+            arcade.draw_circle_filled(int(hub.x) , int(hub.y) , self.hub_radius, hub.color)
+            label = arcade.Text(hub.name, int(hub.x), int(hub.y) + 20, arcade.csscolor.DARK_BLUE, anchor_x='center',font_name="Liberation Sans")
+            label.draw()
+
         for drone in self.main_map.drones:
             arcade.draw_circle_filled(
                 drone.x ,
@@ -94,7 +102,6 @@ class Graph(arcade.Window):
 
 def main():
     main_map = Map(**parser.main_parser())
-    print("\033[H\033[2J")
     window = Graph(main_map)
     window.setup()
     arcade.run()

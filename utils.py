@@ -21,8 +21,6 @@ class Hub:
         self.name = name
         self.type = zone
         self.color = colors["blue"] if not colors.get(color) else colors[color]
-        if not colors.get(color):
-            print(color)
         self.max_drones = max_drones
         self.current_drones_count = 0
         self.cost = float("inf")    
@@ -42,10 +40,12 @@ class Map:
         self.drones: List[Drone] = [Drone() for _ in range(self.nb_drones)]
         self.zone_costs = {"normal":2,"priority":1, "restricted": 3}   
     def set_drones(self, zoom , cx, cy):
+        # TODO remove this random import its just for testing
+        import random
         for drone in self.drones:
             drone.current = self.start
-            drone.x = drone.current.x * zoom + cx
-            drone.y = drone.current.y * zoom + cy
+            drone.x = drone.current.x 
+            drone.y = drone.current.y
              
     def scale_and_center_hubs(self, zoom, cx, cy, move_x , move_y):
         queue = [self.start]
@@ -61,11 +61,8 @@ class Map:
             for hub in self.graph[current]:
                 if hub not in visited:
                     queue += [hub] 
-        flag = False
+        # i dont do the same logic with drone's because the move
         for drone in self.drones:
-            if not flag:
-                print(f"drone.x = {drone.x} drone.y = {drone.y} cx = {cx} cy {cy}")
-                flag = True
             drone.x += move_x
             drone.y += move_y
 
@@ -73,7 +70,6 @@ class Map:
     def find_path(self):
         heap = [self.start]
         history = {}
-        visited = set()
     
         while heap:
             currnt = heapq.heappop(heap)
@@ -93,7 +89,6 @@ class Map:
 
         self.path += [currnt]
         self.path = self.path[::-1]
-        print([zone.name for zone in self.path])
         for drone in self.drones:
             drone.path = self.path
             drone.current = self.path[0]
@@ -119,22 +114,24 @@ class Drone:
         self.pos = (0,0)
         self.x = 0
         self.y = 0
-        self.pos= (0,0)
-        self.done_turn = False
+        self.can_move = False
+        self.reserve_spot = False
         self.color = colors[random.choice(list(colors.keys()))]
         
-    def update(self, zoom, cx, cy):
-        if self.next_index >= len(self.path):
+    def update(self):
+        if self.next_index >= len(self.path) or not self.can_move:
             return
-        nx = ((self.next.x - self.current.x) * 5 ) / 100
-        ny = ((self.next.y - self.current.y) * 5 )/ 100
+        nx = ((self.next.x - self.current.x) * 20 ) / 100
+        ny = ((self.next.y - self.current.y) * 20 )/ 100
         self.x += nx
         self.y += ny
 
         if (self.x , self.y) == (self.next.x , self.next.y ):
             self.current = self.next
-            self.pos = self.next.pos
+            self.current.current_drones_count -= 1
             self.next_index += 1
+            self.can_move = False
+            self.reserve_spot = False
             if self.next_index < len(self.path):
                 self.next = self.path[self.next_index]
 
