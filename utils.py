@@ -23,7 +23,8 @@ class Hub:
         self.color = colors["blue"] if not colors.get(color) else colors[color]
         self.max_drones = max_drones
         self.current_drones_count = 0
-        self.cost = float("inf")    
+        self.cost = float("inf")
+        self.is_goal_hub = False
     def __lt__(self, other):
         return self.cost < other.cost
     
@@ -33,10 +34,9 @@ class Map:
     def __init__(self,graph: Dict[Hub,List[Hub]], start: Hub, end: Hub, nb_drones: int):
         self.graph = graph
         self.start = start
-        self.start.cost = 0
         self.end = end
+        self.end.cost = 0
         self.nb_drones = nb_drones
-        self.path = []
         self.drones: List[Drone] = [Drone() for _ in range(self.nb_drones)]
         self.zone_costs = {"normal":2,"priority":1, "restricted": 3}   
     def set_drones(self, zoom , cx, cy):
@@ -68,9 +68,10 @@ class Map:
 
 
     def find_path(self):
-        heap = [self.start]
+        heap = [self.end]
         history = {}
-    
+
+
         while heap:
             currnt = heapq.heappop(heap)
             for neighber in self.graph[currnt]:
@@ -80,22 +81,6 @@ class Map:
                     neighber.cost = currnt.cost + self.zone_costs[neighber.type]
                     history[neighber] = currnt
                     heap += [neighber]
-            if self.end in self.graph[currnt]:
-                break
-        currnt = self.end
-        while currnt != self.start:
-            self.path += [currnt]
-            currnt = history[currnt]
-
-        self.path += [currnt]
-        self.path = self.path[::-1]
-        for drone in self.drones:
-            drone.path = self.path
-            drone.current = self.path[0]
-            drone.next = self.path[1]
-            drone.x = drone.current.x
-            drone.y = drone.current.y
-            drone.pos = (drone.x, drone.y)
 
 
 
@@ -107,19 +92,36 @@ class Drone:
 
         self.name = f"D{self.counter}"
         Drone.counter += 1
-        self.path: List[Hub] = []
         self.current: Optional[Hub] = None
         self.next: Optional[Hub] = None
-        self.next_index = 1
-        self.pos = (0,0)
         self.x = 0
         self.y = 0
         self.can_move = False
         self.reserve_spot = False
         self.color = colors[random.choice(list(colors.keys()))]
+        self.graph: Dict[Hub, List[Hub]] = {}
+    def find_next(self):
+        hub_list = self.graph[self.current][:]
+        print(self.name, self.current.name,[zone.name for zone in hub_list])
+        min_cost = min(hub_list)
+        if min_cost.current_drones_count < min_cost.max_drones:
+            return min_cost
+        else:
+
+            old_min = min_cost
+            hub_list.remove(min_cost)
+            if not hub_list:
+                return None
+            min_cost = min(hub_list)
+            if min_cost.cost == old_min.cost:
+                return min_cost
+            elif min_cost == old_min.cost + 1:
+                return min_cost
+        return None 
+
         
     def update(self):
-        if self.next_index >= len(self.path) or not self.can_move:
+        if self.current.is_goal_hub or not self.can_move:
             return
         nx = ((self.next.x - self.current.x) * 20 ) / 100
         ny = ((self.next.y - self.current.y) * 20 )/ 100
@@ -128,10 +130,8 @@ class Drone:
 
         if (self.x , self.y) == (self.next.x , self.next.y ):
             self.current = self.next
+            self.next = self.find_next()
             self.current.current_drones_count -= 1
-            self.next_index += 1
             self.can_move = False
             self.reserve_spot = False
-            if self.next_index < len(self.path):
-                self.next = self.path[self.next_index]
 

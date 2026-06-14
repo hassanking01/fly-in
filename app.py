@@ -12,8 +12,7 @@ class Graph(arcade.Window):
         self.main_map = main_map
         self.main_map.find_path()
 
-        # TODO remove this antialiasing twek
-        super().__init__(antialiasing=True)
+        super().__init__(width=1920, height=1010)
         self.drone_texture = arcade.load_texture(
             "./images/drone.png"
         )
@@ -34,13 +33,22 @@ class Graph(arcade.Window):
 
     def setup(self):
         self.main_map.set_drones(self.zoom, self.cx, self.cy)
-
+        for drone in self.main_map.drones:
+            drone.graph = self.main_map.graph
     def on_update(self, delta_time):
         self.sec += delta_time
         if self.sec >= self.speed:
             self.sec  = 0
             if not self.puase:
                 for drone in self.main_map.drones:
+
+                    if not drone.next:
+                        if not drone.reserve_spot:
+                            next_zone = drone.find_next()
+                            if not next_zone:
+                                continue
+                            drone.next = next_zone
+
                     if drone.next.current_drones_count < drone.next.max_drones:
                         drone.can_move = True
                         if not drone.reserve_spot:
@@ -63,26 +71,26 @@ class Graph(arcade.Window):
                 )
         for hub in self.main_map.graph:
             arcade.draw_circle_filled(int(hub.x) , int(hub.y) , self.hub_radius, hub.color)
-            label = arcade.Text(hub.name, int(hub.x), int(hub.y) + 20, arcade.csscolor.DARK_BLUE, anchor_x='center',font_name="Liberation Sans")
-            label.draw()
+            # label = arcade.Text(hub.name, int(hub.x), int(hub.y) + 20, arcade.csscolor.DARK_BLUE, anchor_x='center',font_name="Liberation Sans")
+            # label.draw()
 
         for drone in self.main_map.drones:
             arcade.draw_circle_filled(
                 drone.x ,
-                drone.y ,
+                drone.y,
                 10,
                 drone.color
                 )
-    def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
-        if scroll_y < 0:
-            if self.zoom > 10:
-                self.zoom -= 5
-                self.hub_radius -= 0.5
-        else:
-            self.zoom += 5
-            if self.hub_radius <20:
-                self.hub_radius += 0.5
-        self.main_map.scale_and_center_hubs(self.zoom, self.cx, self.cy, 0, 0)
+    # def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
+    #     if scroll_y < 0:
+    #         if self.zoom > 10:
+    #             self.zoom -= 5
+    #             self.hub_radius -= 0.5
+    #     else:
+    #         self.zoom += 5
+    #         if self.hub_radius <20:
+    #             self.hub_radius += 0.5
+    #     self.main_map.scale_and_center_hubs(self.zoom, self.cx, self.cy, 0, 0)
         
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         self.cx += dx
@@ -96,9 +104,9 @@ class Graph(arcade.Window):
             else:
                 self.puase = True
         if symbol == arcade.key.UP:
-            self.speed -= 0.1
+            self.speed -= 0.01
         if symbol == arcade.key.DOWN:
-            self.speed += 0.1
+            self.speed += 0.01
 
 def main():
     main_map = Map(**parser.main_parser())

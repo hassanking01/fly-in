@@ -191,7 +191,8 @@ def main_parser():
                     raise ValueError(f"error in line [{i}]: same coordinates with different hub")
                 zone_names.add(hub["name"])
                 coordinates.add((hub["x"], hub["y"]))
-                end_hub = Hub(**hub) 
+                end_hub = Hub(**hub)
+                end_hub.is_goal_hub = True
                 graph[end_hub] = []
         for edg in edges:
 
