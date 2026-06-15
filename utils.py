@@ -39,14 +39,24 @@ class Map:
         self.nb_drones = nb_drones
         self.drones: List[Drone] = [Drone() for _ in range(self.nb_drones)]
         self.zone_costs = {"normal":2,"priority":1, "restricted": 3}   
-    def set_drones(self, zoom , cx, cy):
-        # TODO remove this random import its just for testing
-        import random
+
+    def set_drones(self):
         for drone in self.drones:
+            drone.graph = self.graph
             drone.current = self.start
             drone.x = drone.current.x 
             drone.y = drone.current.y
-             
+
+    def reset(self):
+        for drone in self.drones:
+            drone.current = self.start
+            drone.x = drone.current.x
+            drone.y = drone.current.y
+            drone.next = None
+            drone.can_move = False
+            drone.reserve_spot = False
+        for key in self.graph:
+            key.current_drones_count = 0             
     def scale_and_center_hubs(self, zoom, cx, cy, move_x , move_y):
         queue = [self.start]
         visited = set()
@@ -102,7 +112,6 @@ class Drone:
         self.graph: Dict[Hub, List[Hub]] = {}
     def find_next(self):
         hub_list = self.graph[self.current][:]
-        print(self.name, self.current.name,[zone.name for zone in hub_list])
         min_cost = min(hub_list)
         if min_cost.current_drones_count < min_cost.max_drones:
             return min_cost
@@ -123,15 +132,15 @@ class Drone:
     def update(self):
         if self.current.is_goal_hub or not self.can_move:
             return
-        nx = ((self.next.x - self.current.x) * 20 ) / 100
-        ny = ((self.next.y - self.current.y) * 20 )/ 100
+        nx = ((self.next.x - self.current.x) * 50 ) / 100
+        ny = ((self.next.y - self.current.y) * 50 )/ 100
         self.x += nx
         self.y += ny
 
         if (self.x , self.y) == (self.next.x , self.next.y ):
             self.current = self.next
-            self.next = self.find_next()
             self.current.current_drones_count -= 1
+            self.next = self.find_next()
             self.can_move = False
             self.reserve_spot = False
 

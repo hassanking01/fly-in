@@ -12,7 +12,7 @@ class Graph(arcade.Window):
         self.main_map = main_map
         self.main_map.find_path()
 
-        super().__init__(width=1920, height=1010)
+        super().__init__(width=1920, height=1080)
         self.drone_texture = arcade.load_texture(
             "./images/drone.png"
         )
@@ -30,15 +30,15 @@ class Graph(arcade.Window):
         self.sec = 0
         self.speed = 0.1
         self.main_map.scale_and_center_hubs(self.zoom, self.cx, self.cy, 0 ,0)
+        self.turns = 0
 
     def setup(self):
-        self.main_map.set_drones(self.zoom, self.cx, self.cy)
-        for drone in self.main_map.drones:
-            drone.graph = self.main_map.graph
+        self.main_map.set_drones()
     def on_update(self, delta_time):
         self.sec += delta_time
         if self.sec >= self.speed:
             self.sec  = 0
+            all_reserve_spot = []
             if not self.puase:
                 for drone in self.main_map.drones:
 
@@ -48,7 +48,7 @@ class Graph(arcade.Window):
                             if not next_zone:
                                 continue
                             drone.next = next_zone
-
+                    all_reserve_spot += [not drone.reserve_spot]
                     if drone.next.current_drones_count < drone.next.max_drones:
                         drone.can_move = True
                         if not drone.reserve_spot:
@@ -98,6 +98,9 @@ class Graph(arcade.Window):
         self.main_map.scale_and_center_hubs(self.zoom, self.cx, self.cy, dx, dy)
 
     def on_key_press(self, symbol, modifiers):
+        if symbol == arcade.key.R and (modifiers & arcade.key.MOD_CTRL):
+            self.main_map.reset()
+                
         if symbol == arcade.key.SPACE:
             if self.puase:
                 self.puase = False
