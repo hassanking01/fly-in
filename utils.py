@@ -25,6 +25,8 @@ class Hub:
         self.current_drones_count = 0
         self.cost = float("inf")
         self.is_goal_hub = False
+        self.on_road = 0
+        self.drone_in = []
     def __lt__(self, other):
         return self.cost < other.cost
     
@@ -46,7 +48,7 @@ class Map:
             drone.current = self.start
             drone.x = drone.current.x 
             drone.y = drone.current.y
-
+            self.start.drone_in += [drone] 
     def reset(self):
         for drone in self.drones:
             drone.current = self.start
@@ -104,43 +106,68 @@ class Drone:
         Drone.counter += 1
         self.current: Optional[Hub] = None
         self.next: Optional[Hub] = None
+        self.next_x = 0
+        self.next_y = 0
         self.x = 0
         self.y = 0
+        self.first_half = False
         self.can_move = False
         self.reserve_spot = False
         self.color = colors[random.choice(list(colors.keys()))]
         self.graph: Dict[Hub, List[Hub]] = {}
-    def find_next(self):
-        hub_list = self.graph[self.current][:]
-        min_cost = min(hub_list)
-        if min_cost.current_drones_count < min_cost.max_drones:
-            return min_cost
-        else:
 
-            old_min = min_cost
-            hub_list.remove(min_cost)
-            if not hub_list:
-                return None
-            min_cost = min(hub_list)
-            if min_cost.cost == old_min.cost:
-                return min_cost
-            elif min_cost == old_min.cost + 1:
-                return min_cost
+
+    def find_next(self, all_moved):
+        if all_moved:
+            hub_list = self.graph[self.current][:]
+            min_cost = min(hub_list).cost
+            hub_list = sorted(hub_list)
+            for hub in hub_list:
+                if hub.cost <= min_cost + 1 and  hub.current_drones_count < hub.max_drones :
+                    return hub
+                if hub.cost > min_cost + 1:
+                    break
         return None 
 
-        
     def update(self):
+        if not self.next:
+            return False
         if self.current.is_goal_hub or not self.can_move:
-            return
-        nx = ((self.next.x - self.current.x) * 50 ) / 100
-        ny = ((self.next.y - self.current.y) * 50 )/ 100
+            return False
+        
+        if self.next.type == "restricted":
+            if not self.first_half:
+                self.next_x = (self.next.x + self.current.x ) // 2
+                self.next_y = (self.next.y + self.current.y ) // 2
+            else:
+                self.next_x = self.next.x
+                self.next_y = self.next.y
+        else:
+            self.next_x = self.next.x
+            self.next_y = self.next.y
+        nx = (self.next_x - self.current.x) * 0.05
+        ny = (self.next_y - self.current.y) * 0.05
         self.x += nx
         self.y += ny
+        if (self.x , self.y) == (self.next_x , self.next_y ):
+            if self.next.type == "restricted":
+                if not self.first_half:
+                    self.first_half = True
+                else:
+                    self.first_half = False
+                    self.current.drone_in.remove(self)
+                    self.next.drone_in += [self]
+                    self.current = self.next
+                    self.can_move = False
+                    self.reserve_spot = False
+                    self.next = None
+            else:
+                self.current.drone_in.remove(self)
+                self.next.drone_in += [self]
+                self.current = self.next
+                self.can_move = False
+                self.reserve_spot = False
+                self.next = None
 
-        if (self.x , self.y) == (self.next.x , self.next.y ):
-            self.current = self.next
-            self.current.current_drones_count -= 1
-            self.next = self.find_next()
-            self.can_move = False
-            self.reserve_spot = False
-
+            return True
+        return False            
