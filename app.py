@@ -9,26 +9,16 @@ class Graph(arcade.Window):
     def __init__(self, main_map: Map):
         self.main_map = main_map
         self.main_map.find_path()
-
-        super().__init__(width=1920, height=1010)
+        super().__init__(width=1900, height=1040)
         self.drone_texture = arcade.load_texture(
             "./images/drone.png"
         )
+        self.set_location(10,20)
+        self.on_next_turn = False
         self.background_color = arcade.csscolor.DARK_GOLDENROD
-        self.drone = arcade.Sprite(self.drone_texture)
-        self.drone.center_x = 100
-        self.drone.center_y = 100
-        self.all_sprites = arcade.SpriteList()
-        self.all_sprites.append(self.drone)
-        self.cx = self.width // 2
-        self.cy = self.height // 2
-
-        # TODO remove this is just for debugging and uncomment the real cx cy
-        # self.cx = ((self.width // 2) // 2) // 2
-        # self.cy = ((self.height // 2 ) // 2) 
-        # self.set_location(900  , 0)
-
         self.zoom =  150
+        self.cx = self.width // 2 - ((self.main_map.end.x * self.zoom ) // 2)
+        self.cy = self.height // 2
         self.hub_radius = 20
         self.puase = True
         self.sec = 0
@@ -44,16 +34,7 @@ class Graph(arcade.Window):
             all_moved = []
             drones_to_find_next: list[Drone] = []
             for drone in self.main_map.drones:
-
-                if drone.next:
-                    if drone.next.current_drones_count < drone.next.max_drones:
-                        drone.can_move = True
-                        if not drone.reserve_spot:
-                            drone.finished = False
-                            drone.current.current_drones_count -= 1
-                            drone.next.current_drones_count += 1
-                            drone.reserve_spot = True
-                else:
+                if not drone.next:
                     drones_to_find_next += [drone]
                     continue
                 all_moved += [drone.finished]
@@ -74,9 +55,10 @@ class Graph(arcade.Window):
                         else:
                             next = None
                     drone.next = next
-                # self.puase = True
-                for key in self.main_map.graph:
-                    print(key.name, [drone.name for drone in key.drone_in], key.current_drones_count)
+                if self.on_next_turn:
+                    self.puase = True                
+                # for key in self.main_map.graph:
+                #     print(key.name, [drone.name for drone in key.drone_in], key.current_drones_count)
                 for done in self.main_map.drones:
                     print(done.name , drone.current.name , drone.next.name if drone.next else None)
 
@@ -97,8 +79,6 @@ class Graph(arcade.Window):
         for hub in self.main_map.graph:
             arcade.draw_circle_filled(int(hub.x) , int(hub.y) , self.hub_radius + 4, arcade.csscolor.DARK_GRAY)
             arcade.draw_circle_filled(int(hub.x) , int(hub.y) , self.hub_radius, hub.color)
-            label = arcade.Text(f"{hub.name}:{hub.type}", int(hub.x), int(hub.y) + 20, arcade.csscolor.DARK_BLUE, anchor_x='center',font_name="Liberation Sans",font_size=10 )
-            label.draw()
 
         for drone in self.main_map.drones:
             arcade.draw_circle_filled(
@@ -107,8 +87,6 @@ class Graph(arcade.Window):
                 10,
                 drone.color
                 )
-            label = arcade.Text(f"{drone.name}", int(drone.x), int(drone.y) - 20, arcade.csscolor.DARK_BLUE, anchor_x='center',font_name="Liberation Sans",font_size=10 )
-            label.draw()
         
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         self.cx += dx
@@ -120,8 +98,12 @@ class Graph(arcade.Window):
             self.main_map.reset()
 
         if symbol == arcade.key.RIGHT:
+            if not self.on_next_turn:
+                self.on_next_turn = True
             self.puase = False                
         if symbol == arcade.key.SPACE:
+            if self.on_next_turn:
+                self.on_next_turn = False
             if self.puase:
                 self.puase = False
             else:

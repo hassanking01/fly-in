@@ -121,10 +121,23 @@ class Drone:
     def find_next(self, all_moved=False):
         if self.current.is_goal_hub:
             return None
+        
         if all_moved:
             hub_list = self.graph[self.current][:]
+            same_cost: List[Hub] = []
             min_cost = min(hub_list).cost
+        
             hub_list = sorted(hub_list)
+            for hub in hub_list:
+                if hub.cost == min_cost:
+                    same_cost  += [hub]
+            random.shuffle(same_cost)
+            for hub in same_cost:
+                if hub.cost <= min_cost + 1 and  hub.current_drones_count < hub.max_drones :
+                    return hub
+                if hub.cost > min_cost + 1:
+                    break
+            
             for hub in hub_list:
                 if hub.cost <= min_cost + 1 and  hub.current_drones_count < hub.max_drones :
                     return hub
