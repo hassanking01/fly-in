@@ -42,7 +42,7 @@ class Map:
         self.drones: List[Drone] = [Drone() for _ in range(self.nb_drones)]
         self.zone_costs = {"normal":2,"priority":1, "restricted": 3}   
 
-    def set_drones(self):
+    def set_drones(self, all_moved):
         for drone in self.drones:
             drone.graph = self.graph
             drone.current = self.start
@@ -110,14 +110,17 @@ class Drone:
         self.next_y = 0
         self.x = 0
         self.y = 0
+        self.finished = True
         self.first_half = False
         self.can_move = False
         self.reserve_spot = False
         self.color = colors[random.choice(list(colors.keys()))]
         self.graph: Dict[Hub, List[Hub]] = {}
+        self.end_hub = None
 
-
-    def find_next(self, all_moved):
+    def find_next(self, all_moved=False):
+        if self.current.is_goal_hub:
+            return None
         if all_moved:
             hub_list = self.graph[self.current][:]
             min_cost = min(hub_list).cost
@@ -167,7 +170,7 @@ class Drone:
                 self.current = self.next
                 self.can_move = False
                 self.reserve_spot = False
-                self.next = None
-
+                self.next = None   
+            self.finished = True         
             return True
         return False            

@@ -1,7 +1,7 @@
 import arcade
 import parser
 import warnings
-from utils import Map
+from utils import Map, Hub, Drone
 import os
 
 
@@ -10,7 +10,7 @@ class Graph(arcade.Window):
         self.main_map = main_map
         self.main_map.find_path()
 
-        super().__init__(width=1920, height=1080)
+        super().__init__(width=1920, height=1010)
         self.drone_texture = arcade.load_texture(
             "./images/drone.png"
         )
@@ -21,7 +21,13 @@ class Graph(arcade.Window):
         self.all_sprites = arcade.SpriteList()
         self.all_sprites.append(self.drone)
         self.cx = self.width // 2
-        self.cy = self.height // 2 
+        self.cy = self.height // 2
+
+        # TODO remove this is just for debugging and uncomment the real cx cy
+        # self.cx = ((self.width // 2) // 2) // 2
+        # self.cy = ((self.height // 2 ) // 2) 
+        # self.set_location(900  , 0)
+
         self.zoom =  150
         self.hub_radius = 20
         self.puase = True
@@ -32,33 +38,47 @@ class Graph(arcade.Window):
         self.turns = 0
 
     def setup(self):
-        self.main_map.set_drones()
+        self.main_map.set_drones(all_moved=True)
     def on_update(self, delta_time):
         if not self.puase:
             all_moved = []
+            drones_to_find_next: list[Drone] = []
             for drone in self.main_map.drones:
+
                 if drone.next:
                     if drone.next.current_drones_count < drone.next.max_drones:
                         drone.can_move = True
                         if not drone.reserve_spot:
+                            drone.finished = False
                             drone.current.current_drones_count -= 1
                             drone.next.current_drones_count += 1
                             drone.reserve_spot = True
-                            all_moved += [not drone.reserve_spot]
                 else:
-                    all_moved += [not drone.reserve_spot]
-                    drone.next = drone.find_next(all(all_moved))
+                    drones_to_find_next += [drone]
                     continue
+                all_moved += [drone.finished]
                 drone.update()
+            is_all_moved = all(all_moved)
 
-            if all(all_moved) and all_moved:
-                self.puase = True
-                print(all_moved)
+            if is_all_moved:
+                print("\n", "===" * 20)
+                for drone in drones_to_find_next:
+                    next = drone.find_next(is_all_moved)
+                    if next:
+                        if next.current_drones_count < next.max_drones:
+                            next.current_drones_count += 1
+                            drone.current.current_drones_count -= 1
+                            drone.can_move = True
+                            drone.reserve_spot = True
+                            drone.finished = False
+                        else:
+                            next = None
+                    drone.next = next
+                # self.puase = True
                 for key in self.main_map.graph:
                     print(key.name, [drone.name for drone in key.drone_in], key.current_drones_count)
-                    if key.name == "bottleneck":
-                        if key.drone_in:
-                            print([f"{drone.name} next -> {drone.next.name} [{drone.next.current_drones_count} ({[dr.name for dr in drone.next.drone_in]})]" if drone.next else f"{drone.name} -> {None}" for drone in key.drone_in])
+                for done in self.main_map.drones:
+                    print(done.name , drone.current.name , drone.next.name if drone.next else None)
 
     def on_draw(self):
         self.clear()
