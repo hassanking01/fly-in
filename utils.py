@@ -146,13 +146,13 @@ class Drone:
                     same_cost  += [hub]
             random.shuffle(same_cost)
             for hub in same_cost:
-                if hub.cost <= min_cost + 1 and  hub.current_drones_count < hub.max_drones :
+                if hub.cost <= min_cost + 1 and  hub.current_drones_count < hub.max_drones and hub.on_road < 1 :
                     return hub
                 if hub.cost > min_cost + 1:
                     break
             
             for hub in hub_list:
-                if hub.cost <= min_cost + 1 and  hub.current_drones_count < hub.max_drones :
+                if hub.cost <= min_cost + 1 and  hub.current_drones_count < hub.max_drones and hub.on_road < 1 :
                     return hub
                 if hub.cost > min_cost + 1:
                     break
@@ -186,6 +186,7 @@ class Drone:
                     self.first_half = False
                     self.current.drone_in.remove(self)
                     self.next.drone_in += [self]
+                    self.next.on_road -= 1
                     self.current = self.next
                     self.can_move = False
                     self.reserve_spot = False
@@ -194,6 +195,7 @@ class Drone:
                 self.current.drone_in.remove(self)
                 self.next.drone_in += [self]
                 self.current = self.next
+                self.next.on_road -= 1
                 self.can_move = False
                 self.reserve_spot = False
                 self.next = None   

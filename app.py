@@ -43,11 +43,13 @@ class Graph(arcade.Window):
 
             if is_all_moved:
                 print("\n", "===" * 20)
+                self.turns += 1
                 for drone in drones_to_find_next:
                     next = drone.find_next(is_all_moved)
                     if next:
-                        if next.current_drones_count < next.max_drones:
+                        if next.current_drones_count < next.max_drones and next.on_road < 1:
                             next.current_drones_count += 1
+                            next.on_road += 1
                             drone.current.current_drones_count -= 1
                             drone.can_move = True
                             drone.reserve_spot = True
@@ -64,6 +66,7 @@ class Graph(arcade.Window):
         self.clear()
         wrct = arcade.rect.XYWH(self.width // 2 , self.height // 2, 1920, 1080)
         arcade.draw_texture_rect(self.background, wrct)
+        arcade.draw_text(f"Truns: {self.turns}", 20 , 1000 , arcade.csscolor.SALMON, font_size=20)
         for start in self.main_map.graph:
             for end in self.main_map.graph[start]:
                 arcade.draw_line(
@@ -77,6 +80,7 @@ class Graph(arcade.Window):
         for hub in self.main_map.graph:
             arcade.draw_circle_filled(int(hub.x) , int(hub.y) , self.hub_radius + 4, arcade.csscolor.DARK_GRAY)
             arcade.draw_circle_filled(int(hub.x) , int(hub.y) , self.hub_radius, hub.color)
+            # arcade.draw_text(f"{hub.name} [{hub.max_drones}]", hub.x, hub.y + 20 , arcade.csscolor.ORANGE_RED, width=30)
         for drone in self.main_map.drones:
             arcade.draw_circle_filled(
                 drone.x ,
@@ -84,7 +88,7 @@ class Graph(arcade.Window):
                 10,
                 drone.color
                 )
-        
+                
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         self.cx += dx
         self.cy += dy
