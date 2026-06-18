@@ -42,13 +42,20 @@ class Map:
         self.drones: List[Drone] = [Drone() for _ in range(self.nb_drones)]
         self.zone_costs = {"normal":2,"priority":1, "restricted": 3}   
 
-    def set_drones(self, all_moved):
+    def set_drones(self):
         for drone in self.drones:
             drone.graph = self.graph
             drone.current = self.start
             drone.x = drone.current.x 
             drone.y = drone.current.y
-            self.start.drone_in += [drone] 
+            self.start.drone_in += [drone]
+            next = drone.find_next(True)
+            if next:
+                next.current_drones_count += 1
+                drone.can_move = True
+                drone.reserve_spot = True
+                drone.finished = False
+            drone.next = next 
     def reset(self):
         for drone in self.drones:
             drone.current = self.start
@@ -58,7 +65,10 @@ class Map:
             drone.can_move = False
             drone.reserve_spot = False
         for key in self.graph:
-            key.current_drones_count = 0             
+            key.current_drones_count = 0
+            key.drone_in = []
+        self.start.drone_in = [drone for drone in self.drones]
+        self.start.current_drones_count = len(self.drones)                     
     def scale_and_center_hubs(self, zoom, cx, cy, move_x , move_y):
         queue = [self.start]
         visited = set()
@@ -93,8 +103,11 @@ class Map:
                     neighber.cost = currnt.cost + self.zone_costs[neighber.type]
                     history[neighber] = currnt
                     heap += [neighber]
-
-
+        result = []
+        for key in self.graph.keys():
+            result += [(key.name, key.cost)]
+        for key in result:
+            print(*key)
 
 
 

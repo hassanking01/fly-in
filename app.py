@@ -16,7 +16,7 @@ class Graph(arcade.Window):
         self.set_location(10,20)
         self.on_next_turn = False
         self.background_color = arcade.csscolor.DARK_GOLDENROD
-        self.zoom =  150
+        self.zoom =  80
         self.cx = self.width // 2 - ((self.main_map.end.x * self.zoom ) // 2)
         self.cy = self.height // 2
         self.hub_radius = 20
@@ -28,7 +28,7 @@ class Graph(arcade.Window):
         self.turns = 0
 
     def setup(self):
-        self.main_map.set_drones(all_moved=True)
+        self.main_map.set_drones()
     def on_update(self, delta_time):
         if not self.puase:
             all_moved = []
@@ -52,15 +52,13 @@ class Graph(arcade.Window):
                             drone.can_move = True
                             drone.reserve_spot = True
                             drone.finished = False
-                        else:
-                            next = None
                     drone.next = next
                 if self.on_next_turn:
                     self.puase = True                
-                # for key in self.main_map.graph:
-                #     print(key.name, [drone.name for drone in key.drone_in], key.current_drones_count)
-                for done in self.main_map.drones:
-                    print(done.name , drone.current.name , drone.next.name if drone.next else None)
+                for key in self.main_map.graph:
+                    print(key.name, [drone.name for drone in key.drone_in], key.current_drones_count)
+                # for done in self.main_map.drones:
+                #     print(done.name , drone.current.name , drone.next.name if drone.next else None)
 
     def on_draw(self):
         self.clear()
@@ -79,7 +77,6 @@ class Graph(arcade.Window):
         for hub in self.main_map.graph:
             arcade.draw_circle_filled(int(hub.x) , int(hub.y) , self.hub_radius + 4, arcade.csscolor.DARK_GRAY)
             arcade.draw_circle_filled(int(hub.x) , int(hub.y) , self.hub_radius, hub.color)
-
         for drone in self.main_map.drones:
             arcade.draw_circle_filled(
                 drone.x ,
