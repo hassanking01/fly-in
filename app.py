@@ -10,63 +10,47 @@ class Graph(arcade.Window):
         self.main_map = main_map
         self.main_map.find_path()
         super().__init__(width=1900, height=1040)
-        self.drone_texture = arcade.load_texture(
-            "./images/drone.png"
-        )
         self.set_location(10,20)
         self.on_next_turn = False
-        self.background_color = arcade.csscolor.DARK_GOLDENROD
-        self.zoom =  80
+        self.zoom =  90
         self.cx = self.width // 2 - ((self.main_map.end.x * self.zoom ) // 2)
         self.cy = self.height // 2
         self.hub_radius = 20
         self.puase = True
-        self.sec = 0
-        self.speed = 2
         self.background = arcade.load_texture("./background.jpg")
         self.main_map.scale_and_center_hubs(self.zoom, self.cx, self.cy, 0 ,0)
         self.turns = 0
-
+        self.is_sim_end = False
     def setup(self):
         self.main_map.set_drones()
     def on_update(self, delta_time):
-        if not self.puase:
-            all_moved = []
-            drones_to_find_next: list[Drone] = []
+        if not self.puase and not self.is_sim_end:
+            all_moved: bool = []
             for drone in self.main_map.drones:
-                if not drone.next:
-                    drones_to_find_next += [drone]
-                    continue
                 all_moved += [drone.finished]
                 drone.update()
-            is_all_moved = all(all_moved)
-
-            if is_all_moved:
-                print("\n", "===" * 20)
+            if all(all_moved):
                 self.turns += 1
-                for drone in drones_to_find_next:
-                    next = drone.find_next(is_all_moved)
+                for drone in self.main_map.drones:
+                    if drone.next :
+                        continue
+                    next = drone.find_next()
                     if next:
                         if next.current_drones_count < next.max_drones and next.on_road < 1:
                             next.current_drones_count += 1
                             next.on_road += 1
                             drone.current.current_drones_count -= 1
                             drone.can_move = True
-                            drone.reserve_spot = True
                             drone.finished = False
                     drone.next = next
                 if self.on_next_turn:
                     self.puase = True                
-                for key in self.main_map.graph:
-                    print(key.name, [drone.name for drone in key.drone_in], key.current_drones_count)
-                # for done in self.main_map.drones:
-                #     print(done.name , drone.current.name , drone.next.name if drone.next else None)
-
+                print("turns =", self.turns)
     def on_draw(self):
         self.clear()
         wrct = arcade.rect.XYWH(self.width // 2 , self.height // 2, 1920, 1080)
         arcade.draw_texture_rect(self.background, wrct)
-        arcade.draw_text(f"Truns: {self.turns}", 20 , 1000 , arcade.csscolor.SALMON, font_size=20)
+        # arcade.draw_text(f"Truns: {self.turns}", 20 , 1000 , arcade.csscolor.SALMON, font_size=20)
         for start in self.main_map.graph:
             for end in self.main_map.graph[start]:
                 arcade.draw_line(
@@ -101,7 +85,8 @@ class Graph(arcade.Window):
         if symbol == arcade.key.RIGHT:
             if not self.on_next_turn:
                 self.on_next_turn = True
-            self.puase = False                
+            if self.puase:
+                self.puase = False                
         if symbol == arcade.key.SPACE:
             if self.on_next_turn:
                 self.on_next_turn = False

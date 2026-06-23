@@ -49,7 +49,7 @@ class Map:
             drone.x = drone.current.x 
             drone.y = drone.current.y
             self.start.drone_in += [drone]
-            next = drone.find_next(True)
+            next = drone.find_next()
             if next:
                 next.current_drones_count += 1
                 drone.can_move = True
@@ -63,26 +63,15 @@ class Map:
             drone.y = drone.current.y
             drone.next = None
             drone.can_move = False
-            drone.reserve_spot = False
         for key in self.graph:
             key.current_drones_count = 0
-            key.drone_in = []
-        self.start.drone_in = [drone for drone in self.drones]
-        self.start.current_drones_count = len(self.drones)                     
+        self.start.current_drones_count = self.nb_drones
+                     
     def scale_and_center_hubs(self, zoom, cx, cy, move_x , move_y):
-        queue = [self.start]
-        visited = set()
-        while queue:
-            current = queue.pop(0)
-            if current in visited:
-                continue
-            visited.add(current)
-            x,y = current.pos
-            current.x  = x * zoom + cx
-            current.y =  y * zoom + cy
-            for hub in self.graph[current]:
-                if hub not in visited:
-                    queue += [hub] 
+        for hub in self.graph:
+            x,y = hub.pos
+            hub.x  = x * zoom + cx
+            hub.y =  y * zoom + cy
         # i dont do the same logic with drone's because the move
         for drone in self.drones:
             drone.x += move_x
@@ -91,24 +80,15 @@ class Map:
 
     def find_path(self):
         heap = [self.end]
-        history = {}
-
-
         while heap:
             currnt = heapq.heappop(heap)
             for neighber in self.graph[currnt]:
                 if neighber.type == "blocked":
                     continue
-                if neighber.cost > currnt.cost + self.zone_costs[neighber.type]:
-                    neighber.cost = currnt.cost + self.zone_costs[neighber.type]
-                    history[neighber] = currnt
+                new_cost = currnt.cost + self.zone_costs[neighber.type]
+                if neighber.cost > new_cost:
+                    neighber.cost = new_cost
                     heap += [neighber]
-        result = []
-        for key in self.graph.keys():
-            result += [(key.name, key.cost)]
-        for key in result:
-            print(*key)
-
 
 
 class Drone:
@@ -126,44 +106,37 @@ class Drone:
         self.finished = True
         self.first_half = False
         self.can_move = False
-        self.reserve_spot = False
         self.color = colors[random.choice(list(colors.keys()))]
         self.graph: Dict[Hub, List[Hub]] = {}
         self.end_hub = None
 
-    def find_next(self, all_moved=False):
+    def find_next(self) -> Optional[Hub]:
         if self.current.is_goal_hub:
             return None
         
-        if all_moved:
-            hub_list = self.graph[self.current][:]
-            same_cost: List[Hub] = []
-            min_cost = min(hub_list).cost
-        
-            hub_list = sorted(hub_list)
-            for hub in hub_list:
-                if hub.cost == min_cost:
-                    same_cost  += [hub]
-            random.shuffle(same_cost)
-            for hub in same_cost:
-                if hub.cost <= min_cost + 1 and  hub.current_drones_count < hub.max_drones and hub.on_road < 1 :
-                    return hub
-                if hub.cost > min_cost + 1:
-                    break
-            
-            for hub in hub_list:
-                if hub.cost <= min_cost + 1 and  hub.current_drones_count < hub.max_drones and hub.on_road < 1 :
-                    return hub
-                if hub.cost > min_cost + 1:
-                    break
+        hub_list = self.graph[self.current][:]
+        same_cost: List[Hub] = []
+        min_cost = min(hub_list).cost
+    
+        hub_list = sorted(hub_list)
+        for hub in hub_list:
+            if hub.cost == min_cost:
+                same_cost  += [hub]
+        random.shuffle(same_cost)
+        for hub in same_cost:
+            if hub.cost <= min_cost + 1 and  hub.current_drones_count < hub.max_drones and hub.on_road < 1 :
+                return hub
+            hub_list.remove(hub)
+        for hub in hub_list:
+            if hub.cost <= min_cost + 1 and  hub.current_drones_count < hub.max_drones and hub.on_road < 1 :
+                return hub
+            if hub.cost > min_cost + 1:
+                break
         return None 
 
     def update(self):
-        if not self.next:
-            return False
-        if self.current.is_goal_hub or not self.can_move:
-            return False
-        
+        if not self.next or self.current.is_goal_hub or not self.can_move:
+            return 
         if self.next.type == "restricted":
             if not self.first_half:
                 self.next_x = (self.next.x + self.current.x ) // 2
@@ -184,21 +157,13 @@ class Drone:
                     self.first_half = True
                 else:
                     self.first_half = False
-                    self.current.drone_in.remove(self)
-                    self.next.drone_in += [self]
                     self.next.on_road -= 1
                     self.current = self.next
                     self.can_move = False
-                    self.reserve_spot = False
                     self.next = None
             else:
-                self.current.drone_in.remove(self)
-                self.next.drone_in += [self]
-                self.current = self.next
                 self.next.on_road -= 1
+                self.current = self.next
                 self.can_move = False
-                self.reserve_spot = False
                 self.next = None   
             self.finished = True         
-            return True
-        return False            
