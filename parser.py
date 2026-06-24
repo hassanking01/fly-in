@@ -87,7 +87,14 @@ def get_hub_details(value: str, is_start_or_end: bool, nb_drones: int):
     result = {"name":name, "x":x, "y":y, **metadata}
     return result 
 
-
+def get_connection_details(edg: str) -> tuple[str, str]:
+    data = edg.split()
+    if len(data) == 1:
+        connection , metadata = data[0] , "[max_link_capacity=1]"
+    else:
+        connection, metadata = data[0], "".join(data[1:])
+    print(connection, metadata)
+    return (connection, metadata)
 def main_parser():
     if len(sys.argv) == 1:
         map_path = "./maps"
@@ -123,6 +130,7 @@ def main_parser():
     zone_names = set()
     coordinates = set()
     graph = {}
+    Hubs = {} 
     edges = []
     start_hub = None
     end_hub = None
@@ -168,7 +176,9 @@ def main_parser():
                     raise ValueError(f"error in line [{i}]: same coordinates with different hub")
                 zone_names.add(hub["name"])
                 coordinates.add((hub["x"], hub["y"]))
-                graph[Hub(**hub)] = []
+                hub = Hub(**hub)
+                graph[hub] = []
+                Hubs[hub.name] = hub
             elif key == "connection":
                 edges += [f"{i}-{value}"]
             elif key == "start_hub":
@@ -182,6 +192,7 @@ def main_parser():
                 start_hub = Hub(**hub) 
                 start_hub.current_drones_count = nb_drones
                 graph[start_hub] = []
+                Hubs[start_hub.name] = start_hub
 
             elif key == "end_hub":
                 hub = get_hub_details(value, True, nb_drones)
@@ -194,15 +205,17 @@ def main_parser():
                 end_hub = Hub(**hub)
                 end_hub.is_goal_hub = True
                 graph[end_hub] = []
+                Hubs[end_hub.name] = end_hub
         for edg in edges:
-
-            line, src, dest = map(lambda x: x.strip(), edg.split("-"))
+            
+            result = get_connection_details(edg)
+            line, src, dest = result[0].split("-")
             if src not in zone_names:
                 raise ValueError(f"error in line [{line}]: {src} is not hub")
             if dest not in zone_names:
                 raise ValueError(f"error in line [{line}]: {dest} is not hub")
-            src = [ key for key in graph if key.name == src][0]
-            dest = [key for key in graph if key.name == dest][0]
+            src = Hubs[src]
+            dest = Hubs[dest]
             
             graph[src] += [dest]
             graph[dest] += [src]

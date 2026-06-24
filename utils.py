@@ -17,6 +17,7 @@ class Hub:
         ) -> None:
         self.x = x
         self.y = y
+        self.connections: Dict[Hub, int] = {}
         self.pos = (x, y)
         self.name = name
         self.type = zone
