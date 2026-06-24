@@ -12,7 +12,7 @@ class Graph(arcade.Window):
         super().__init__(width=1900, height=1040)
         self.set_location(10,20)
         self.on_next_turn = False
-        self.zoom =  90
+        self.zoom =  140
         self.cx = self.width // 2 - ((self.main_map.end.x * self.zoom ) // 2)
         self.cy = self.height // 2
         self.hub_radius = 20
@@ -33,15 +33,15 @@ class Graph(arcade.Window):
                 self.turns += 1
                 for drone in self.main_map.drones:
                     if drone.next :
+                        drone.finished = False
                         continue
                     next = drone.find_next()
                     if next:
-                        if next.current_drones_count < next.max_drones and next.on_road < 1:
-                            next.current_drones_count += 1
-                            next.on_road += 1
-                            drone.current.current_drones_count -= 1
-                            drone.can_move = True
-                            drone.finished = False
+                        next.current_drones_count += 1
+                        next.on_road += 1
+                        drone.current.current_drones_count -= 1
+                        drone.can_move = True
+                        drone.finished = False
                     drone.next = next
                 if self.on_next_turn:
                     self.puase = True                
@@ -61,10 +61,14 @@ class Graph(arcade.Window):
                     arcade.csscolor.DARK_GRAY,
                     5
                 )
+                tx= (end.x + start.x ) // 2
+                ty= (end.y + start.y ) // 2  
+                arcade.draw_text(f"{start.connections[end]}", tx, ty , arcade.csscolor.BLUE_VIOLET, width=30,  anchor_x="center")
+
         for hub in self.main_map.graph:
             arcade.draw_circle_filled(int(hub.x) , int(hub.y) , self.hub_radius + 4, arcade.csscolor.DARK_GRAY)
             arcade.draw_circle_filled(int(hub.x) , int(hub.y) , self.hub_radius, hub.color)
-            # arcade.draw_text(f"{hub.name} [{hub.max_drones}]", hub.x, hub.y + 20 , arcade.csscolor.ORANGE_RED, width=30)
+            arcade.draw_text(f"{hub.name} [{hub.max_drones}]", hub.x, hub.y + 20 , arcade.csscolor.ORANGE_RED, width=30,  anchor_x="center")
         for drone in self.main_map.drones:
             arcade.draw_circle_filled(
                 drone.x ,
@@ -72,7 +76,7 @@ class Graph(arcade.Window):
                 10,
                 drone.color
                 )
-                
+            
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         self.cx += dx
         self.cy += dy
@@ -108,4 +112,7 @@ def main():
 
 
 if __name__=="__main__":
-    main()
+    try:
+        main()
+    except parser.ParserError as e:
+        print(e)

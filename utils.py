@@ -125,11 +125,11 @@ class Drone:
                 same_cost  += [hub]
         random.shuffle(same_cost)
         for hub in same_cost:
-            if hub.cost <= min_cost + 1 and  hub.current_drones_count < hub.max_drones and hub.on_road < 1 :
+            if hub.cost <= min_cost + 1 and  hub.current_drones_count < hub.max_drones and hub.on_road < self.current.connections[hub] :
                 return hub
             hub_list.remove(hub)
         for hub in hub_list:
-            if hub.cost <= min_cost + 1 and  hub.current_drones_count < hub.max_drones and hub.on_road < 1 :
+            if hub.cost <= min_cost + 1 and  hub.current_drones_count < hub.max_drones and hub.on_road < self.current.connections[hub]:
                 return hub
             if hub.cost > min_cost + 1:
                 break

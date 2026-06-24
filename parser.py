@@ -1,21 +1,23 @@
 from utils import Hub
 import sys
 
+class ParserError(Exception):
+    pass
+
+
 def get_hub_details(value: str, is_start_or_end: bool, nb_drones: int):
     value = value.split()
     value = " ".join(value)
-
     value = value.split(" ", 3)
-
     name = None
     x = None
     y = None
     metadata = None
     if len(value) == 3:
-        name, x, y = list(map(lambda x: x.strip(), value))
+        name, x, y = value
         metadata = {"color":None, "max_drones":nb_drones if is_start_or_end else 1, "zone":"normal"}
     elif len(value) == 4:
-        name , x , y , metadata = list( filter( lambda x:x,  map(lambda x: x.strip(), value)))
+        name , x , y , metadata = value
         if "[" not in metadata or "]" not in metadata:
             raise ValueError("shi idk")
         metadata = metadata.strip("[").strip("]").split()
@@ -76,25 +78,50 @@ def get_hub_details(value: str, is_start_or_end: bool, nb_drones: int):
     try:
         x = int(x)
     except ValueError:
-        raise ValueError(f"x value in {name} should be int")
+        raise ParserError(f"x value in {name} should be int")
 
     try:
         y = int(y)
     except ValueError:
-        raise ValueError(f"x value in {name} should be int")
+        raise ParserError(f"x value in {name} should be int")
 
 
     result = {"name":name, "x":x, "y":y, **metadata}
     return result 
 
 def get_connection_details(edg: str) -> tuple[str, str]:
-    data = edg.split()
+    edg = " ".join(edg.split())
+    data = edg.split(" ", 1)
+    
+    line, src, dest  = data[0].split("-")
     if len(data) == 1:
-        connection , metadata = data[0] , "[max_link_capacity=1]"
+        metadata = "max_link_capacity=1"
     else:
-        connection, metadata = data[0], "".join(data[1:])
-    print(connection, metadata)
-    return (connection, metadata)
+        metadata: list[str] = data[1]
+        if metadata[0] != "["  :
+            raise ParserError(f"Error on line [{line}]:\ninvalid metadata opening expected '[', got '{metadata[0]}'")
+        if metadata[-1] != "]":
+            raise ParserError(f"Error on line [{line}]:\ninvalid metadata closing expected ']', got '{metadata[-1]}'")
+        metadata = metadata[1:len(metadata)-1].split()
+        metadata = "".join(metadata)
+    if metadata: 
+        if "=" not in metadata:
+            key,value = "Error", ""
+        else: 
+            key, value=  metadata.split("=")
+        try:
+            value = int(value)
+        except ValueError as e:
+            value = None
+    else:
+        key, value = "", ""
+        
+    if not metadata or key != "max_link_capacity" or not value:
+        raise ParserError(
+            f"Error on line {line}: expected metadata in the form [max_link_capacity=<value: int>]"
+        )
+    return (line , src, dest, value)
+
 def main_parser():
     if len(sys.argv) == 1:
         map_path = "./maps"
@@ -130,7 +157,7 @@ def main_parser():
     zone_names = set()
     coordinates = set()
     graph = {}
-    Hubs = {} 
+    Hubs: dict[str, Hub] = {} 
     edges = []
     start_hub = None
     end_hub = None
@@ -208,14 +235,15 @@ def main_parser():
                 Hubs[end_hub.name] = end_hub
         for edg in edges:
             
-            result = get_connection_details(edg)
-            line, src, dest = result[0].split("-")
+            line, src, dest , max_link_capacity = get_connection_details(edg)
             if src not in zone_names:
                 raise ValueError(f"error in line [{line}]: {src} is not hub")
             if dest not in zone_names:
                 raise ValueError(f"error in line [{line}]: {dest} is not hub")
             src = Hubs[src]
             dest = Hubs[dest]
+            src.connections[dest] = max_link_capacity
+            dest.connections[src] = max_link_capacity
             
             graph[src] += [dest]
             graph[dest] += [src]
