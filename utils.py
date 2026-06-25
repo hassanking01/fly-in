@@ -3,6 +3,8 @@ from colors import colors
 import random
 import heapq
 
+class Grapherror(Exception):
+    pass
 
 class Hub:
 
@@ -75,16 +77,20 @@ class Map:
 
     def find_path(self):
         heap = [self.end]
+        visited = set([self.end])
         while heap:
             currnt = heapq.heappop(heap)
             for neighber in self.graph[currnt]:
+                visited.add(neighber)
                 if neighber.type == "blocked":
                     continue
                 new_cost = currnt.cost + self.zone_costs[neighber.type]
                 if neighber.cost > new_cost:
                     neighber.cost = new_cost
                     heap += [neighber]
-
+        for hub in self.graph:
+            if hub not in visited:
+                raise Grapherror("disconnected graphs are not allowd")  
 
 class Drone:
     counter = 1
