@@ -27,7 +27,6 @@ class Hub:
         self.cost = float("inf")
         self.is_goal_hub = False
         self.on_road = 0
-        self.drone_in = []
     def __lt__(self, other):
         return self.cost < other.cost
     
@@ -49,31 +48,26 @@ class Map:
             drone.current = self.start
             drone.x = drone.current.x 
             drone.y = drone.current.y
-            self.start.drone_in += [drone]
             next = drone.find_next()
+            drone.can_move = False
+            drone.finished = True
             if next:
                 next.current_drones_count += 1
                 drone.can_move = True
-                drone.reserve_spot = True
                 drone.finished = False
             drone.next = next 
     def reset(self):
-        for drone in self.drones:
-            drone.current = self.start
-            drone.x = drone.current.x
-            drone.y = drone.current.y
-            drone.next = None
-            drone.can_move = False
         for key in self.graph:
             key.current_drones_count = 0
+            key.on_road = 0
         self.start.current_drones_count = self.nb_drones
+        self.set_drones()
                      
     def scale_and_center_hubs(self, zoom, cx, cy, move_x , move_y):
         for hub in self.graph:
             x,y = hub.pos
             hub.x  = x * zoom + cx
             hub.y =  y * zoom + cy
-        # i dont do the same logic with drone's because the move
         for drone in self.drones:
             drone.x += move_x
             drone.y += move_y
