@@ -6,7 +6,7 @@
 nb_drones: 25
 
 # === LAYER 0: The Nightmare Begins ===
-start_hub: start 0 0 [color=green max_drones=25]
+start_hub: start 0 0 [zone=restricted color=green max_drones=25]
 
 # Single-file entry gates (extreme bottleneck)
 hub: gate_hell1 2 0 [color=red max_drones=1]
@@ -17,7 +17,7 @@ hub: gate_hell5 6 0 [color=red max_drones=1]
 
 # === LAYER 1: The Maze of Despair ===
 # Multiple interconnected dead ends and loops
-hub: maze_trap_a1 2 1 [color=purple]
+hub: maze_trap_a1 2 1 [color=purple ]
 hub: maze_trap_a2 3 1 [color=purple]
 hub: maze_trap_a3 4 1 [color=purple]
 hub: maze_dead_a 5 1 [color=black]
@@ -78,7 +78,7 @@ hub: conv_restricted9 15 -2 [zone=restricted color=darkred max_drones=1]
 
 # === LAYER 5: The Final Gauntlet of Doom ===
 hub: final_merge 16 0 [color=violet max_drones=5]
-hub: final_torture1 17 0 [color=crimson max_drones=2]
+hub: final_torture1 17 0 [color=crimson  max_drones=2]
 hub: final_torture2 18 0 [color=crimson max_drones=1]
 hub: final_torture3 19 0 [color=crimson max_drones=1]
 hub: final_torture4 20 0 [color=crimson max_drones=1]
@@ -98,7 +98,7 @@ connection: gate_hell4-gate_hell5 [max_link_capacity=1]
 
 # Layer 1 connections (maze of despair)
 connection: gate_hell1-maze_trap_a1
-connection: gate_hell2-maze_trap_b1 [    max_link_capacity= 1]
+connection: gate_hell2-maze_trap_b1 [    max_link_capacity      = 1]
 connection: gate_hell3-maze_loop1
 
 connection: maze_trap_a1-maze_trap_a2

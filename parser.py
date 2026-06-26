@@ -1,163 +1,200 @@
 from utils import Hub
 import sys
+from typing import Any, Dict, Optional
+from error_classes import (
+    HubFormatError,
+    HubMetadataError,
+    ConnectionMetadataError
+    )
 
-class ParserError(Exception):
-    pass
 
+def get_hub_details(
+        file_line: str,
+        is_start_or_end: bool,
+        nb_drones: int
+        ) -> Dict[str, Any]:
+    metadata_format_error = (
+        "hub metadata must follow this format: "
+        "[zone=<normal|priority|restricted> "
+        "color=<valid_color> "
+        "max_drones=<int>] "
+        "(all fields are optional)"
+    )
+    line = " ".join(file_line.split())
+    values = line.split(" ", 3)
+    # name = None
+    # x: Optional[str] = None
+    # y: Optional[str] = None
+    metadata: list[str] = []
+    parsed_metadata: Optional[Dict[str, Any]] = None
 
-def get_hub_details(value: str, is_start_or_end: bool, nb_drones: int):
-    value = value.split()
-    value = " ".join(value)
-    value = value.split(" ", 3)
-    name = None
-    x = None
-    y = None
-    metadata = None
-    if len(value) == 3:
-        name, x, y = value
-        metadata = {"color":None, "max_drones":nb_drones if is_start_or_end else 1, "zone":"normal"}
-    elif len(value) == 4:
-        name , x , y , metadata = value
-        if "[" not in metadata or "]" not in metadata:
+    if len(values) == 3:
+        name, str_x, str_y = values
+        parsed_metadata = {
+            "color": "blue",
+            "max_drones": nb_drones if is_start_or_end else 1,
+            "zone": "normal"
+        }
+    elif len(values) == 4:
+        name, str_x, str_y, raw_metadata = values
+        if "[" not in raw_metadata or "]" not in raw_metadata:
             raise ValueError("shi idk")
-        metadata = metadata.strip("[").strip("]").split()
+        metadata = raw_metadata.strip("[]").split()
         line = ""
-        for i in metadata:
-            flag = False if not line or line[-1] != "=" else True
-            if "=" in i and i != "=":
-                flag = True
+        parsed_metadata = {}
+        keys = ["color", "max_drones", "zone"]
+        saved_keys: list[str] = []
+        zone_types = ["normal", "blocked", "restricted", "priority"]
+        for n, i in enumerate(metadata):
+            if (
+                not line and i[0] == "="
+                or line and "=" in line and "=" in i
+                or "=" in i and i.count("=") != 1
+                or line and "=" not in line and i.count("=") != 1
+                or line and line[-1] != "=" and i[0] != "="
+            ):
+                raise HubMetadataError(
+                    f"invalid metadata format — {metadata_format_error}"
+                )
             line += i
-            if flag:
-                line += " "
-
-        metadata = line.split()
-        result = {}
-        
-        for item in metadata:
-            item = item.strip()
-            if not item:
-                continue
-            key, val = list(map(lambda x: x.strip(), item.split("=")))
-            if not key or not val:
-                raise ValueError("error the metadata key value peers should be exactly like this: key=value")
-            if key ==  "zone":
-                if result.get(key):
-                    raise ValueError("duplicated metadata")
-                else:
-                    result[key] = val
-            elif key == "color":
-                if result.get(key):
-                    raise ValueError("duplicated metadata")
-                else:
-                    result[key] = val
-            elif key == "max_drones":
-                if result.get(key):
-                    raise ValueError("duplicated metadata")
-                else:
+            if line and "=" in line and line[-1] != "=":
+                key, value = get_key_value("=", line)
+                if key == "zone":
+                    if value not in zone_types:
+                        raise HubMetadataError(
+                            f"invalid zone '{value}', "
+                            f"must be one of {set(zone_types)}"
+                        )
+                if key == "max_drones":
                     try:
-                        result[key] = int(val)
-                    except ValueError as error:
-                        raise ValueError("not int value in max_drones")
-            else:
-                raise ValueError(f"{key}:not a valid key in metadata")
-        metadata = result
-        if not metadata.get("zone"):
-            metadata["zone"] = "normal"
-        if not metadata.get("color"):
-            metadata["color"] = None
-        if not metadata.get("max_drones"):
-            metadata["max_drones"] = nb_drones if is_start_or_end else 1
-        if is_start_or_end and metadata["max_drones"] < nb_drones:
-            raise ValueError("number of drones in start and end should be equal to total drones")
-        metadata = {k: metadata[k] for k in sorted(metadata.keys())}
+                        cased_value = int(value)
+                    except ValueError:
+                        HubMetadataError(
+                            "invalid max_drones — max_drones must be valid int"
+                            f"\nmetadata format {metadata_format_error}"
+                        )
+
+                if key not in keys:
+                    raise HubMetadataError(
+                        f"unknown metadata key '{key}'"
+                        f"\nmetadata format {metadata_format_error}"
+                    )
+                if key in saved_keys:
+                    raise HubMetadataError(
+                        f"duplicate key '{key}' —"
+                        " each key can only appear once"
+                    )
+                parsed_metadata.update(
+                    {key: value if key != "max_drones" else cased_value}
+                )
+                line = ""
+            if line and n == len(parsed_metadata) - 1:
+                if "=" in line or line in keys:
+                    raise HubMetadataError(
+                        f"missing value for key '{line.split('=')[0]}'"
+                        f" — {metadata_format_error}")
+                else:
+                    HubMetadataError(
+                        f"unknown key '{line}' — {metadata_format_error}"
+                    )
+        if "zone" not in parsed_metadata:
+            parsed_metadata["zone"] = "normal"
+        if "color" not in parsed_metadata:
+            parsed_metadata["color"] = "blue"
+        if "max_drones" not in parsed_metadata:
+            parsed_metadata["max_drones"] = 1
+        if is_start_or_end and parsed_metadata["max_drones"] < nb_drones:
+            parsed_metadata["max_drones"] = nb_drones
+        metadata_result = {
+            k: parsed_metadata[k]
+            for k in sorted(parsed_metadata.keys())
+        }
     else:
-        raise ValueError("shi idk")
-    if not name:
-        raise  ValueError("not should not be empty string")
+        raise HubFormatError(
+            f"invalid hub format, expected:"
+            " 'name x y' or 'name x y [metadata]', "
+            f"got {file_line} "
+        )
+    try:
+        x = int(str_x)
+    except ValueError:
+        raise HubFormatError(
+            f"invalid x coordinate for hub '{name}',"
+            f" expected int, got '{str_x}'"
+        )
 
     try:
-        x = int(x)
+        y = int(str_y)
     except ValueError:
-        raise ParserError(f"x value in {name} should be int")
+        raise HubFormatError(
+            f"invalid y coordinate for hub '{name}',"
+            f" expected int, got '{str_y}'"
+        )
 
-    try:
-        y = int(y)
-    except ValueError:
-        raise ParserError(f"x value in {name} should be int")
+    result = {
+        "name": name,
+        "x": x,
+        "y": y,
+        **metadata_result
+    }
+    return result
 
 
-    result = {"name":name, "x":x, "y":y, **metadata}
-    return result 
-
-def get_connection_details(edg: str) -> tuple[str, str]:
+def get_connection_details(edg: str) -> tuple[str, str, str, int]:
     edg = " ".join(edg.split())
     data = edg.split(" ", 1)
-    
-    line, src, dest  = data[0].split("-")
+    line, src, dest = data[0].split("-")
     if len(data) == 1:
         metadata = "max_link_capacity=1"
     else:
-        metadata: list[str] = data[1]
-        if metadata[0] != "["  :
-            raise ParserError(f"Error on line [{line}]:\ninvalid metadata opening expected '[', got '{metadata[0]}'")
-        if metadata[-1] != "]":
-            raise ParserError(f"Error on line [{line}]:\ninvalid metadata closing expected ']', got '{metadata[-1]}'")
-        metadata = metadata[1:len(metadata)-1].split()
-        metadata = "".join(metadata)
-    if metadata: 
-        if "=" not in metadata:
-            key,value = "Error", ""
-        else: 
-            key, value=  metadata.split("=")
-        try:
-            value = int(value)
-        except ValueError as e:
-            value = None
-    else:
-        key, value = "", ""
-        
-    if not metadata or key != "max_link_capacity" or not value:
-        raise ParserError(
-            f"Error on line {line}: expected metadata in the form [max_link_capacity=<value: int>]"
-        )
-    return (line , src, dest, value)
+        metadata = data[1]
+        if metadata[0] != "[":
+            raise ConnectionMetadataError(
+                f"invalid metadata opening expected '[', got '{metadata[0]}'"
+            )
 
-def main_parser():
-    if len(sys.argv) == 1:
-        map_path = "./maps"
-        maps = {}
-        from pathlib import Path
-        folder = Path("./maps").iterdir()
-        for i in folder:
-            if i.is_dir():
-                maps[i.name] = []
-                for j in i.iterdir():
-                    maps[i.name] += [j.name]
-        level = []
-        for key in maps:
-            level += [key]
-        level = sorted(level, key=lambda x: len(x))
-        print(*[f"[{i}] {key}" for i , key in enumerate(level)], sep='\n')
-        answer = int(input("select level: "))
-        while answer >= len(level) or answer < 0:
-            print("wrond answer")
-            answer = int(input("select level: "))
-        level = level[answer]
-        map_path += f"/{level}"
-        for i , item in enumerate(maps[level]):
-            print(f"[{i}] {item}")
-        answer = int(input("select level: "))
-        while answer >= len(maps[level]) or answer < 0:
-            print("wrong answer")
-            answer = int(input("select a map : "))
-        map_path += f"/{maps[level][answer]}"
-    else:
-        map_path = sys.argv[1]
-    
+        if metadata[-1] != "]":
+            raise ConnectionMetadataError(
+                f"invalid metadata closing expected ']', got '{metadata[-1]}'"
+            )
+
+        metadata = metadata.strip("[]").strip()
+    is_metadata_good = True
+    if metadata:
+
+        if (
+            "=" not in metadata
+            or metadata[0] == "="
+            or metadata[-1] == "="
+            or metadata.count("=") > 1
+        ):
+            is_metadata_good = False
+        else:
+            key, str_value = get_key_value("=", metadata)
+        if is_metadata_good:
+            try:
+                value = int(str_value)
+            except ValueError:
+                is_metadata_good = False
+        if key != "max_link_capacity":
+            is_metadata_good = False
+    if not metadata or not is_metadata_good:
+        raise ConnectionMetadataError(
+            "expected metadata in the form [max_link_capacity=<value: int>]"
+        )
+    return (line, src, dest, value)
+
+
+def get_key_value(sep: str, line: str) -> tuple[str, ...]:
+    return tuple(map(lambda x: x.strip(), line.split(sep)))
+
+
+def main_parser() -> Dict[str, Any]:
+    map_path = sys.argv[1]
     zone_names = set()
     coordinates = set()
-    graph = {}
-    Hubs: dict[str, Hub] = {} 
+    graph: Dict[Hub, list[Hub]] = {}
+    Hubs: dict[str, Hub] = {}
     edges = []
     start_hub = None
     end_hub = None
@@ -165,22 +202,25 @@ def main_parser():
     required = {"start_hub", "end_hub", "hub", "connection"}
     next_start = 0
     with open(map_path, mode='r') as file:
-        for i , line in enumerate(file, start=1):
+        for i, line in enumerate(file, start=1):
             line = line.strip()
             if line.startswith("#") or not line:
                 continue
             line.lower()
-            if "#" in line:
-                line = line.split("#")[0]
-            if ":" not in line or "nb_drones" not in line or line.count(":") != 1:
+            if (
+                    ":" not in line
+                    or "nb_drones" not in line
+                    or line.count(":") != 1
+                    ):
                 raise ValueError(f"[{i}]invalide params in nd_drons")
-            key, value = list(map(lambda string: string.strip(), line.split(":")))
+
+            key, value = get_key_value(":", line)
             try:
                 nb_drones = int(value)
                 if nb_drones <= 0:
                     raise ValueError(f"{nb_drones}")
             except ValueError as e:
-                raise ValueError(f"invalid number of drones: {e}" )
+                raise ValueError(f"invalid number of drones: {e}")
             next_start = i
             break
         for i, line in enumerate(file, start=next_start + 1):
@@ -188,63 +228,92 @@ def main_parser():
             if line.startswith("#") or not line:
                 continue
             line.lower()
-            if "#" in line:
-                line = line.split("#")[0]
             if ":" not in line or line.count(":") != 1:
                 raise ValueError(f"invalide params in line [{i}]")
-            key , value = list(map(lambda string: string.strip(), line.split(":")))
+            key, value = get_key_value(":", line)
             if key not in required:
-                raise ValueError(f"invalide params in line [{i}] {key} is not a valid key")
+                raise ValueError(
+                    "invalide params in line"
+                    f" [{i}] {key} is not a valid key"
+                )
+
             if key == "hub":
-                hub = get_hub_details(value, False, 1)
-                if hub["name"] in zone_names:
-                    raise ValueError(f"error in line [{i}]: can't be duplicate name in hubs")
-                elif (hub["x"], hub["y"]) in coordinates:
-                    raise ValueError(f"error in line [{i}]: same coordinates with different hub")
-                zone_names.add(hub["name"])
-                coordinates.add((hub["x"], hub["y"]))
-                hub = Hub(**hub)
+                hub_dict = get_hub_details(value, False, 1)
+                if hub_dict["name"] in zone_names:
+                    raise ValueError(
+                        f"error in line [{i}]:"
+                        " can't be duplicate name in hubs"
+                    )
+                elif (hub_dict["x"], hub_dict["y"]) in coordinates:
+                    raise ValueError(
+                        f"error in line [{i}]:"
+                        " same coordinates with different hub"
+                    )
+
+                zone_names.add(hub_dict["name"])
+                coordinates.add((hub_dict["x"], hub_dict["y"]))
+                hub = Hub(**hub_dict)
                 graph[hub] = []
                 Hubs[hub.name] = hub
             elif key == "connection":
                 edges += [f"{i}-{value}"]
             elif key == "start_hub":
-                hub = get_hub_details(value, True, nb_drones)
-                if hub["name"] in zone_names:
-                    raise ValueError(f"error in line [{i}]: can't be duplicate name in hubs")
-                elif (hub["x"], hub["y"]) in coordinates:
-                    raise ValueError(f"error in line [{i}]: same coordinates with different hub")
-                zone_names.add(hub["name"])
-                coordinates.add((hub["x"], hub["y"]))
-                start_hub = Hub(**hub) 
-                start_hub.current_drones_count = nb_drones
+                hub_dict = get_hub_details(value, True, nb_drones)
+                if hub_dict["name"] in zone_names:
+                    raise ValueError(
+                        f"error in line [{i}]:"
+                        " can't be duplicate name in hubs"
+                    )
+
+                elif (hub_dict["x"], hub_dict["y"]) in coordinates:
+                    raise ValueError(
+                        f"error in line [{i}]:"
+                        " same coordinates with different hub"
+                    )
+
+                zone_names.add(hub_dict["name"])
+                coordinates.add((hub_dict["x"], hub_dict["y"]))
+                start_hub = Hub(**hub_dict)
                 graph[start_hub] = []
                 Hubs[start_hub.name] = start_hub
 
             elif key == "end_hub":
-                hub = get_hub_details(value, True, nb_drones)
-                if hub["name"] in zone_names:
-                    raise ValueError(f"error in line [{i}]: can't be duplicate name in hubs")
-                elif (hub["x"], hub["y"]) in coordinates:
-                    raise ValueError(f"error in line [{i}]: same coordinates with different hub")
-                zone_names.add(hub["name"])
-                coordinates.add((hub["x"], hub["y"]))
-                end_hub = Hub(**hub)
+                hub_dict = get_hub_details(value, True, nb_drones)
+                if hub_dict["name"] in zone_names:
+                    raise ValueError(
+                        f"error in line [{i}]:"
+                        " can't be duplicate name in hubs"
+                    )
+                elif (hub_dict["x"], hub_dict["y"]) in coordinates:
+                    raise ValueError(
+                        f"error in line [{i}]:"
+                        " same coordinates with different hub"
+                    )
+                zone_names.add(hub_dict["name"])
+                coordinates.add((hub_dict["x"], hub_dict["y"]))
+                end_hub = Hub(**hub_dict)
                 end_hub.is_goal_hub = True
                 graph[end_hub] = []
                 Hubs[end_hub.name] = end_hub
         for edg in edges:
-            
-            line, src, dest , max_link_capacity = get_connection_details(edg)
-            if src not in zone_names:
-                raise ValueError(f"error in line [{line}]: {src} is not hub")
-            if dest not in zone_names:
-                raise ValueError(f"error in line [{line}]: {dest} is not hub")
-            src = Hubs[src]
-            dest = Hubs[dest]
-            src.connections[dest] = max_link_capacity
-            dest.connections[src] = max_link_capacity
-            
+            line, src_name, dest_name, mlc = get_connection_details(edg)
+            if src_name not in zone_names:
+                raise ValueError(
+                    f"error in line [{line}]: {src_name} is not hub"
+                )
+            if dest_name not in zone_names:
+                raise ValueError(
+                    f"error in line [{line}]: {dest_name} is not hub"
+                )
+            src = Hubs[src_name]
+            dest = Hubs[dest_name]
+            src.connections[dest] = mlc
+            dest.connections[src] = mlc
             graph[src] += [dest]
             graph[dest] += [src]
-        return {"graph":graph, "start": start_hub, "end": end_hub, "nb_drones": nb_drones}
+        return {
+            "graph": graph,
+            "start": start_hub,
+            "end": end_hub,
+            "nb_drones": nb_drones
+        }
