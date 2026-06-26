@@ -168,7 +168,7 @@ class Drone:
         if (
             not self.next
             or not self.current
-            or not self.current.is_goal_hub
+            or self.current.is_goal_hub
             or not self.can_move
         ):
             return
@@ -195,10 +195,10 @@ class Drone:
                     self.next.on_road -= 1
                     self.current = self.next
                     self.can_move = False
-                    self.next = None
+                    # self.next = None
             else:
                 self.next.on_road -= 1
                 self.current = self.next
                 self.can_move = False
-                self.next = None
+                # self.next = None
             self.finished = True

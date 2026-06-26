@@ -1,7 +1,7 @@
 import arcade
 import parser
 import warnings
-from utils import Map
+from utils import Map, Drone
 from error_classes import ParserError, Grapherror
 
 
@@ -28,10 +28,23 @@ class SimulationWindow(arcade.Window):
     def on_update(self, delta_time: float) -> None:
         if not self.puase and not self.is_sim_end:
             all_moved: list[bool] = []
+            moved_drones: list[Drone] = []
             for drone in self.main_map.drones:
                 all_moved += [drone.finished]
+                if drone.finished and drone.next:
+                    moved_drones += [drone]
                 drone.update()
             if all(all_moved):
+                moved_drones = moved_drones[::-1]
+                for drone in moved_drones:
+                    print(f"{drone.name}-{drone.next.name}", end=" ")
+                    if (
+                        drone.next.type == "restricted"
+                        and drone.first_half
+                    ):
+                        continue
+                    drone.next = None
+                print()
                 self.turns += 1
                 for drone in self.main_map.drones:
                     if drone.next:
