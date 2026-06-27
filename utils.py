@@ -4,6 +4,8 @@ import random
 import heapq
 from error_classes import Grapherror
 
+from pprint import pprint
+
 
 class Hub:
 
@@ -36,6 +38,8 @@ class Hub:
     def __lt__(self, other) -> bool:
         return self.cost < other.cost
 
+    def __repr__(self):
+        return self.name
 
 class Map:
     def __init__(
@@ -147,7 +151,11 @@ class Drone:
                 same_cost += [hub]
         random.shuffle(same_cost)
         for hub in same_cost:
-            print(hub.name, self.current.name, hub.connections, self.current.connections)
+            print(hub,"-" * 30,)
+            pprint(hub.connections)
+            print( self.current,"-" * 30)
+            pprint( self.current.connections)
+
             if (
                 hub.cost <= min_cost + 1
                 and hub.current_drones_count < hub.max_drones

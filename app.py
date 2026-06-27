@@ -78,10 +78,11 @@ class SimulationWindow(arcade.View):
                     drone.next = next
                 if self.on_next_turn:
                     self.puase = True
-                if all(d.current == self.main_map.end for d in self.main_map.drones):
                     self.is_sim_end = True
 
     def on_draw(self) -> None:
+        if all(d.current == self.main_map.end for d in self.main_map.drones):
+            return
         self.clear()
         self.camera.use()
         wrct = arcade.rect.XYWH(self.width // 2, self.height // 2, 1920, 1080)
