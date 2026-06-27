@@ -3,27 +3,51 @@ import parser
 import warnings
 from utils import Map, Drone
 from error_classes import ParserError, Grapherror
+import math
+from rich.panel import Panel
+from rich.console import Console
 
 
-class SimulationWindow(arcade.Window):
+class SimulationWindow(arcade.View):
     def __init__(self, main_map: Map) -> None:
+        self.camera = arcade.camera.Camera2D()
         self.main_map = main_map
         self.main_map.compute_costs()
-        super().__init__(width=1900, height=1040)
-        self.set_location(10, 20)
+        super().__init__()
         self.on_next_turn = False
-        self.zoom = 120
+        self.console = Console()
+        self.zoom = 100
         self.cx = self.width // 2 - ((self.main_map.end.x * self.zoom) // 2)
         self.cy = self.height // 2
-        self.hub_radius = 20
+        self.hub_radius = 30
         self.puase = True
         self.background = arcade.load_texture("./background.jpg")
         self.main_map.scale_and_center_hubs(self.zoom, self.cx, self.cy, 0, 0)
         self.turns = 0
         self.is_sim_end = False
+        self.current_zoom = 1.0
+
+    def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
+        self.current_zoom += scroll_y * 0.1
+        self.current_zoom = max(1.0, min(5.0, self.current_zoom))
+        self.camera.zoom = self.current_zoom
 
     def setup(self) -> None:
         self.main_map.set_drones()
+
+    def print_turns(self, moved_drones: list[Drone]):
+        line = "[cyan]"
+        for drone in moved_drones:
+            line += f"{drone.name}-{drone.next.name} "
+            if drone.next.type == "restricted" and drone.first_half:
+                continue
+            drone.next = None
+        line += "[/cyan]"
+        panel = Panel(
+            line,
+            title=f"[bold yellow]TURN {self.turns}[/bold yellow]",
+            border_style="red")
+        self.console.print(panel)
 
     def on_update(self, delta_time: float) -> None:
         if not self.puase and not self.is_sim_end:
@@ -35,17 +59,8 @@ class SimulationWindow(arcade.Window):
                     moved_drones += [drone]
                 drone.update()
             if all(all_moved):
-                moved_drones = moved_drones[::-1]
-                for drone in moved_drones:
-                    print(f"{drone.name}-{drone.next.name}", end=" ")
-                    if (
-                        drone.next.type == "restricted"
-                        and drone.first_half
-                    ):
-                        continue
-                    drone.next = None
-                print()
                 self.turns += 1
+                self.print_turns(moved_drones[::-1])
                 for drone in self.main_map.drones:
                     if drone.next:
                         drone.finished = False
@@ -61,23 +76,22 @@ class SimulationWindow(arcade.Window):
                     drone.next = next
                 if self.on_next_turn:
                     self.puase = True
-                if all(
-                    d.current == self.main_map.end
-                    for d in self.main_map.drones
-                ):
+                if all(d.current == self.main_map.end for d in self.main_map.drones):
                     self.is_sim_end = True
 
     def on_draw(self) -> None:
         self.clear()
+        self.camera.use()
         wrct = arcade.rect.XYWH(self.width // 2, self.height // 2, 1920, 1080)
         arcade.draw_texture_rect(self.background, wrct)
-        # arcade.draw_text(
-        #     f"Turns: {self.turns}",
-        #     20,
-        #     1000,
-        #     arcade.csscolor.SALMON,
-        #     font_size=20
-        # )
+        arcade.draw_text(
+            f"Turns: {self.turns}",
+            0,
+            0,
+            arcade.csscolor.SALMON,
+            font_size=20,
+            font_name="Black Ops One",
+        )
         visited = set()
         for start in self.main_map.graph:
             for end in self.main_map.graph[start]:
@@ -93,48 +107,39 @@ class SimulationWindow(arcade.Window):
                     int(end.x),
                     int(end.y),
                     arcade.csscolor.DARK_GRAY,
-                    5
+                    5,
                 )
                 visited.add(key)
         for hub in self.main_map.graph:
             arcade.draw_circle_filled(
-                int(hub.x),
-                int(hub.y),
-                self.hub_radius + 4,
-                arcade.csscolor.DARK_GRAY
+                hub.x, hub.y, self.hub_radius + 4, arcade.csscolor.DARK_GRAY
             )
-            arcade.draw_circle_filled(
-                hub.x,
-                hub.y,
-                self.hub_radius,
-                hub.color
+            arcade.draw_circle_filled(hub.x, hub.y, self.hub_radius, hub.color)
+            angle = math.radians(50)
+
+            dot_x = hub.x + (self.hub_radius + 4) * math.cos(angle)
+            dot_y = hub.y + (self.hub_radius + 4) * math.sin(angle)
+            arcade.draw_circle_filled(dot_x, dot_y, 13, arcade.csscolor.DARK_GRAY)
+            arcade.draw_circle_filled(dot_x, dot_y, 10, arcade.csscolor.ROYAL_BLUE)
+            arcade.draw_text(
+                f"{hub.type[0].upper()}",
+                dot_x - 1,
+                dot_y + 1,
+                arcade.csscolor.DARK_RED,
+                9,
+                font_name="JetBrains Mono",
+                anchor_x="center",
+                anchor_y="center",
             )
         for drone in self.main_map.drones:
-            arcade.draw_circle_filled(
-                drone.x,
-                drone.y,
-                10,
-                drone.color
-                )
+            arcade.draw_circle_filled(drone.x, drone.y, 10, drone.color)
 
     def on_mouse_drag(
-            self,
-            x: int,
-            y: int,
-            dx: int,
-            dy: int,
-            buttons: int,
-            modifiers: int
-            ) -> None:
+        self, x: int, y: int, dx: int, dy: int, buttons: int, modifiers: int
+    ) -> None:
         self.cx += dx
         self.cy += dy
-        self.main_map.scale_and_center_hubs(
-            self.zoom,
-            self.cx,
-            self.cy,
-            dx,
-            dy
-        )
+        self.main_map.scale_and_center_hubs(self.zoom, self.cx, self.cy, dx, dy)
 
     def on_key_press(self, symbol: int, modifiers: int) -> None:
         if symbol == arcade.key.R and (modifiers & arcade.key.MOD_CTRL):
@@ -159,8 +164,10 @@ class SimulationWindow(arcade.Window):
 def main() -> None:
     warnings.filterwarnings("ignore")
     main_map = Map(**parser.main_parser())
-    window = SimulationWindow(main_map)
-    window.setup()
+    window = arcade.Window(width=1910, height=980)
+    game = SimulationWindow(main_map)
+    window.show_view(game)
+    game.setup()
     arcade.run()
 
 

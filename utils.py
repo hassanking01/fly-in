@@ -33,7 +33,7 @@ class Hub:
         self.is_goal_hub = False
         self.on_road = 0
 
-    def __lt__(self, other: Hub) -> bool:
+    def __lt__(self, other) -> bool:
         return self.cost < other.cost
 
 
