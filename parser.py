@@ -311,7 +311,7 @@ def main_parser() -> Dict[str, Any]:
                 "max_link_capacity": mlc,
                 "on_road": 0
             }
-            dest.connections[dest] = {
+            dest.connections[src] = {
                 "max_link_capacity": mlc,
                 "on_road": 0
             } 

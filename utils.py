@@ -150,11 +150,15 @@ class Drone:
             if hub.cost == min_cost:
                 same_cost += [hub]
         random.shuffle(same_cost)
-        for hub in same_cost:
-            print(hub,"-" * 30,)
-            pprint(hub.connections)
+        if self.name == "D1":
             print( self.current,"-" * 30)
             pprint( self.current.connections)
+            print("----!----")
+        for hub in same_cost:
+            if self.name == "D1":
+
+                print(hub,"-" * 30,)
+                pprint(hub.connections)
 
             if (
                 hub.cost <= min_cost + 1
@@ -202,12 +206,12 @@ class Drone:
                     self.first_half = True
                 else:
                     self.first_half = False
-                    self.next.connections[self.current]["on_road"] -= 1
+                    self.current.connections[self.next]["on_road"] -= 1
                     self.current = self.next
                     self.can_move = False
                     # self.next = None
             else:
-                self.next.connections[self.current]["on_road"] -= 1
+                self.next.connections[self.next]["on_road"] -= 1
                 self.current = self.next
                 self.can_move = False
                 # self.next = None
