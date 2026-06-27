@@ -38,9 +38,11 @@ class SimulationWindow(arcade.View):
     def print_turns(self, moved_drones: list[Drone]):
         line = "[cyan]"
         for drone in moved_drones:
-            line += f"{drone.name}-{drone.next.name} "
             if drone.next.type == "restricted" and drone.first_half:
+                line += f"{drone.name}-{drone.current.name}-{drone.next.name} "
                 continue
+            else:
+                line += f"{drone.name}-{drone.next.name} "
             drone.next = None
         line += "[/cyan]"
         panel = Panel(
@@ -68,7 +70,7 @@ class SimulationWindow(arcade.View):
                     next = drone.find_next()
                     if next:
                         next.current_drones_count += 1
-                        next.on_road += 1
+                        next.connections[drone.current]["on_road"] += 1
                         if drone.current:
                             drone.current.current_drones_count -= 1
                         drone.can_move = True
@@ -164,7 +166,7 @@ class SimulationWindow(arcade.View):
 def main() -> None:
     warnings.filterwarnings("ignore")
     main_map = Map(**parser.main_parser())
-    window = arcade.Window(width=1910, height=980)
+    window = arcade.Window(width=1920, height=1010)
     game = SimulationWindow(main_map)
     window.show_view(game)
     game.setup()
@@ -172,17 +174,17 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except ParserError as e:
-        print(e)
-    except Grapherror as e:
-        print(e)
-    except Exception as e:
-        print(e)
-    except KeyboardInterrupt:
-        print("""
- ▄████  ▄████▄ ▄████▄ ████▄  █████▄ ██  ██ ██████
-██  ▄▄▄ ██  ██ ██  ██ ██  ██ ██▄▄██  ▀██▀  ██▄▄
- ▀███▀  ▀████▀ ▀████▀ ████▀  ██▄▄█▀   ██   ██▄▄▄▄
-""")
+    main()
+#     try:
+#     except ParserError as e:
+#         print(e)
+#     except Grapherror as e:
+#         print(e)
+#     except Exception as e:
+#         print(e)
+#     except KeyboardInterrupt:
+#         print("""
+#  ▄████  ▄████▄ ▄████▄ ████▄  █████▄ ██  ██ ██████
+# ██  ▄▄▄ ██  ██ ██  ██ ██  ██ ██▄▄██  ▀██▀  ██▄▄
+#  ▀███▀  ▀████▀ ▀████▀ ████▀  ██▄▄█▀   ██   ██▄▄▄▄
+# """)

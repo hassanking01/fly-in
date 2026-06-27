@@ -307,8 +307,14 @@ def main_parser() -> Dict[str, Any]:
                 )
             src = Hubs[src_name]
             dest = Hubs[dest_name]
-            src.connections[dest] = mlc
-            dest.connections[src] = mlc
+            src.connections[dest] = {
+                "max_link_capacity": mlc,
+                "on_road": 0
+            }
+            dest.connections[dest] = {
+                "max_link_capacity": mlc,
+                "on_road": 0
+            } 
             graph[src] += [dest]
             graph[dest] += [src]
         return {

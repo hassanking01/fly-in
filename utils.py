@@ -19,7 +19,7 @@ class Hub:
 
         self.x = x
         self.y = y
-        self.connections: Dict[Hub, int] = {}
+        self.connections: Dict[Hub, dict[str,int]] = {}
         self.pos = (x, y)
         self.name = name
         self.type = zone
@@ -63,6 +63,7 @@ class Map:
             drone.can_move = False
             drone.finished = True
             if next:
+                next.connections[drone.current]["on_road"] += 1
                 next.current_drones_count += 1
                 drone.can_move = True
                 drone.finished = False
@@ -146,10 +147,11 @@ class Drone:
                 same_cost += [hub]
         random.shuffle(same_cost)
         for hub in same_cost:
+            print(hub.name, self.current.name, hub.connections, self.current.connections)
             if (
                 hub.cost <= min_cost + 1
                 and hub.current_drones_count < hub.max_drones
-                and hub.on_road < self.current.connections[hub]
+                and hub.connections[self.current]["on_road"] < self.current.connections[hub]["max_link_capacity"]
                     ):
                 return hub
             hub_list.remove(hub)
@@ -157,7 +159,7 @@ class Drone:
             if (
                 hub.cost <= min_cost + 1
                 and hub.current_drones_count < hub.max_drones
-                and hub.on_road < self.current.connections[hub]
+                and hub.connections[self.current]["on_road"] < self.current.connections[hub]["max_link_capacity"]
                     ):
                 return hub
             if hub.cost > min_cost + 1:
@@ -192,12 +194,12 @@ class Drone:
                     self.first_half = True
                 else:
                     self.first_half = False
-                    self.next.on_road -= 1
+                    self.next.connections[self.current]["on_road"] -= 1
                     self.current = self.next
                     self.can_move = False
                     # self.next = None
             else:
-                self.next.on_road -= 1
+                self.next.connections[self.current]["on_road"] -= 1
                 self.current = self.next
                 self.can_move = False
                 # self.next = None
