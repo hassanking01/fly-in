@@ -1,5 +1,4 @@
 from utils import Hub
-import sys
 from typing import Any, Dict, Optional
 from error_classes import (
     ParserError,
@@ -11,18 +10,18 @@ from error_classes import (
 
 class Parser:
 
-    def __init__(self):
-        self.map_path = sys.argv[1]
+    def __init__(self, path: str) -> None:
+        self.map_path = path
         self.zone_names = set()
         self.coordinates = set()
         self.graph: Dict[Hub, list[Hub]] = {}
         self.Hubs: dict[str, Hub] = {}
         self.connections = set()
-        self.start_end_check = {"start_hub": False,"end_hub": False }
+        self.is_registered = {"start_hub": False,"end_hub": False  }
         self.start_hub = None
         self.end_hub = None
         self.nb_drones = 0
-        self.required = {"start_hub", "end_hub", "hub", "connection"}
+        self.required = {"start_hub", "end_hub", "hub", "connection", "nb_drones"}
 
     def get_hub_details(
             self,
@@ -41,132 +40,113 @@ class Parser:
         values = line.split(" ", 3)
         metadata: list[str] = []
         parsed_metadata: Optional[Dict[str, Any]] = None
-
+        raw_metadata = ""
         if len(values) == 3:
             name, str_x, str_y = values
-            parsed_metadata = {
-                "color": "blue",
-                "max_drones": nb_drones if is_start_or_end else 1,
-                "zone": "normal"
-            }
+            raw_metadata = "[zone=normal  color=blue max_drones=1]"
         elif len(values) == 4:
             name, str_x, str_y, raw_metadata = values
-            if (
-                raw_metadata[0] != "["
-                or raw_metadata[-1] != "]"
-                or raw_metadata.count("[") != 1
-                or raw_metadata.count("]") != 1
-            ):
-                if raw_metadata[0] != "[":
-                    if "[" not in raw_metadata:
-                        error = "missing opening bracket '['"
-                    else :
-                        error = "opening bracket '[' not in the beginning"
-                        
-                        
-                elif raw_metadata[-1] != "]":
-                    if "]" not in raw_metadata:
-                        error = "missing closing bracket ']'"
-                    else:
-                        error = "closing bracket ']' not on the end"
-                elif raw_metadata.count("[") > 1:
-                    error = "multiple opening brackets '['"
-                elif raw_metadata.count("]") > 1:
-                    error = "multiple closing brackets ']'"
-                raise HubMetadataError(f"{error}\n{metadata_format_error}")
-            metadata = raw_metadata.strip("[]").split()
-            line = ""
-            parsed_metadata = {}
-            keys = ["color", "max_drones", "zone"]
-            zone_types = ["normal", "blocked", "restricted", "priority"]
-            for index, i in enumerate(metadata):
-                if (
-                    not line and i[0] == "="
-                    or line and "=" in line and "=" in i
-                    or "=" in i and i.count("=") != 1
-                    or line and "=" not in line and i.count("=") != 1
-                    or line and line[-1] != "=" and i[0] != "="
-                ):
-                    raise HubMetadataError(
-                        f"invalid metadata format — {metadata_format_error}"
-                    )
-                line += i
-                if line and "=" in line and line[-1] != "=":
-                    key, value = self.get_key_value("=", line)
-                    if key == "zone":
-                        if value not in zone_types:
-                            raise HubMetadataError(
-                                f"invalid zone '{value}', "
-                                f"must be one of {set(zone_types)}"
-                            )
-                    if key == "max_drones":
-                        try:
-                            cased_value = int(value)
-                        except ValueError:
-                            raise HubMetadataError(
-                                f"invalid max_drones — max_drones must be valid int got '{value}'\n"
-                                f"metadata format {metadata_format_error}"
-                            )
-                        if cased_value <= 0:
-                            raise HubMetadataError(
-                                f"max_drones must be a positive integer, got '{cased_value}'")
-
-                    if key not in keys:
-                        raise HubMetadataError(
-                            f"unknown metadata key '{key}'"
-                            f" metadata format {metadata_format_error}"
-                        )
-                    if key in parsed_metadata:
-                        raise HubMetadataError(
-                            f"duplicate key '{key}' —"
-                            " each key can only appear once"
-                        )
-                    parsed_metadata.update(
-                        {key: value if key != "max_drones" else cased_value}
-                    )
-                    line = ""
-                if line and index == len(metadata) - 1:
-                    if "=" in line or line in keys:
-                        raise HubMetadataError(
-                            f"missing value for key '{line.split('=')[0]}'"
-                            f" — {metadata_format_error}")
-                    else:
-                        HubMetadataError(
-                            f"unknown key '{line}' — {metadata_format_error}"
-                        )
-            if "zone" not in parsed_metadata:
-                parsed_metadata["zone"] = "normal"
-            if "color" not in parsed_metadata:
-                parsed_metadata["color"] = "blue"
-            if "max_drones" not in parsed_metadata:
-                parsed_metadata["max_drones"] = 1
-            if is_start_or_end and parsed_metadata["max_drones"] < nb_drones:
-                parsed_metadata["max_drones"] = nb_drones
         else:
             raise HubFormatError(
                 f"invalid hub format, expected:"
                 " 'name x y' or 'name x y [metadata]', "
                 f"got {file_line} "
             )
+        if (
+            raw_metadata[0] != "["
+            or raw_metadata[-1] != "]"
+            or raw_metadata.count("[") != 1
+            or raw_metadata.count("]") != 1
+        ):
+            if raw_metadata[0] != "[":
+                if "[" not in raw_metadata:
+                    error = "missing opening bracket '['"
+                else :
+                    error = "opening bracket '[' not in the beginning"
+            elif raw_metadata[-1] != "]":
+                if "]" not in raw_metadata:
+                    error = "missing closing bracket ']'"
+                else:
+                    error = "closing bracket ']' not on the end"
+            elif raw_metadata.count("[") > 1:
+                error = "multiple opening brackets '['"
+            elif raw_metadata.count("]") > 1:
+                error = "multiple closing brackets ']'"
+            raise HubMetadataError(f"{error}\n{metadata_format_error}")
+        name , x , y = self.validate_required_data(name, str_x, str_y)
+        metadata = raw_metadata.strip("[]").split()
+        line = ""
+        parsed_metadata = {}
+        keys = ["color", "max_drones", "zone"]
+        zone_types = ["normal", "blocked", "restricted", "priority"]
+        for index, i in enumerate(metadata):
+            if (
+                not line and i[0] == "="
+                or line and "=" in line and "=" in i
+                or "=" in i and i.count("=") != 1
+                or line and "=" not in line and i.count("=") != 1
+                or line and line[-1] != "=" and i[0] != "="
+            ):
+                raise HubMetadataError(
+                    f"invalid metadata format — {metadata_format_error}"
+                )
+            line += i
+            if line and "=" in line and line[-1] != "=":
+                key, value = self.get_key_value("=", line)
+                if key == "zone":
+                    if value not in zone_types:
+                        raise HubMetadataError(
+                            f"invalid zone '{value}', "
+                            f"must be one of {set(zone_types)}"
+                        )
+                if key == "max_drones":
+                    try:
+                        cased_value = int(value)
+                    except ValueError:
+                        raise HubMetadataError(
+                            f"invalid max_drones — max_drones must be valid int got '{value}'\n"
+                            f"metadata format {metadata_format_error}"
+                        )
+                    if cased_value <= 0:
+                        raise HubMetadataError(
+                            f"max_drones must be a positive integer, got '{cased_value}'")
+
+                if key not in keys:
+                    raise HubMetadataError(
+                        f"unknown metadata key '{key}'"
+                        f" metadata format {metadata_format_error}"
+                    )
+                if key in parsed_metadata:
+                    raise HubMetadataError(
+                        f"duplicate key '{key}' —"
+                        " each key can only appear once"
+                    )
+                parsed_metadata.update(
+                    {key: value if key != "max_drones" else cased_value}
+                )
+                line = ""
+            if line and index == len(metadata) - 1:
+                if "=" in line or line in keys:
+                    raise HubMetadataError(
+                        f"missing value for key '{line.split('=')[0]}'"
+                        f" — {metadata_format_error}")
+                else:
+                    HubMetadataError(
+                        f"unknown key '{line}' — {metadata_format_error}"
+                    )
+        if "zone" not in parsed_metadata:
+            parsed_metadata["zone"] = "normal"
+        if "color" not in parsed_metadata:
+            parsed_metadata["color"] = "blue"
+        if "max_drones" not in parsed_metadata:
+            parsed_metadata["max_drones"] = 1
+        if is_start_or_end:
+            parsed_metadata["max_drones"] = nb_drones
+
         metadata_result = {
             k: parsed_metadata[k]
             for k in sorted(parsed_metadata.keys())
         }
-        try:
-            x = int(str_x)
-        except ValueError:
-            raise HubFormatError(
-                f"invalid x coordinate for hub '{name}',"
-                f" expected int, got '{str_x}'"
-            )
-
-        try:
-            y = int(str_y)
-        except ValueError:
-            raise HubFormatError(
-                f"invalid y coordinate for hub '{name}',"
-                f" expected int, got '{str_y}'"
-            )
 
         result = {
             "name": name,
@@ -176,6 +156,28 @@ class Parser:
         }
         return result
 
+    def cast_coordinates(self, coordinate_str, axis, name):
+        try:
+            coordinate_int = int(coordinate_str)
+        except ValueError:
+            raise HubFormatError(
+                f"invalid x coordinate for hub '{name}',"
+                f" expected int, got '{coordinate_str}'"
+            )
+        return coordinate_int
+    def validate_required_data(self, name, str_x, str_y):
+        x = self.cast_coordinates(str_x, 'X', name)
+        y = self.cast_coordinates(str_y, 'Y', name)
+        if (x, y) in self.coordinates:
+            raise HubFormatError(
+                f"zone '{name}' shares coordinates "
+                f"({x}, {y}) with an existing zone"
+            )
+        if name in self.zone_names:
+            raise ParserError( f"duplicate zone name '{name}")
+        if "-" in name:
+            raise ParserError( f"zone name '{name}' cannot contain '-'")
+        return name ,x, y
 
     def get_connection_details(self, edg: str) -> tuple[str, str, str, int]:
         edg = " ".join(edg.split())
@@ -192,7 +194,7 @@ class Parser:
             raise ConnectionEdgError(
                 f"zone name cannot be empty in '{data[0]}'"
             )
-        src, dest = get_key_value(sep="-", line=data[0])
+        src, dest = self.get_key_value(sep="-", line=data[0])
         if src == dest:
             raise ConnectionEdgError(
                 f"source and destination zones must be different: '{src}'"
@@ -226,7 +228,7 @@ class Parser:
             ):
                 is_metadata_good = False
             else:
-                key, str_value = get_key_value("=", metadata)
+                key, str_value = self.get_key_value("=", metadata)
             if is_metadata_good:
                 value = 0
                 try:
@@ -245,7 +247,6 @@ class Parser:
             )
         return (src, dest, value)
 
-
     def get_key_value(self, sep: str, line: str) -> tuple[str, ...]:
         return tuple(map(lambda x: x.strip(), line.split(sep)))
 
@@ -258,11 +259,11 @@ class Parser:
         if not valid:
             raise ParserError()
 
-
     def main_parser(self) -> Dict[str, Any]:
         next_start = 0
         with open(self.map_path, mode='r') as file:
             for line_number, line in enumerate(file, start=1):
+                line  = line.split("#")[0]
                 line = line.strip()
                 if line.startswith("#") or not line:
                     continue
@@ -272,23 +273,18 @@ class Parser:
                         or line.count(":") != 1
                         ):
                     if ":" not in line:
-                        raise ParserError(
-                            line_number,
-                            f"ParserError Error in Line",
-                            f"missing ':' separator, got '{line}'"
-                        )
-                    if line.count(":") != 1:
-                        raise ParserError(
-                            line_number,
-                            f"ParserError Error in Line",
-                            f"expected exactly one ':', got '{line}'"
-                        )
+                        error  = f"missing ':' separator, got '{line}'"
+                    else :
+                        error = f"expected exactly one ':', got '{line}'"
+                    raise ParserError(
+                        line_number,
+                        error
+                    )
                 key, value = self.get_key_value(":", line)
                 if not self.nb_drones:
                     if key != "nb_drones":
                         raise ParserError(
                             line_number,
-                            f"ParserError Error in Line",
                             f"first line must be 'nb_drones: <number>', got '{line}'"
                         )
                     try:
@@ -296,20 +292,17 @@ class Parser:
                     except ParserError:
                         raise ParserError(
                             line_number,
-                            f"ParserError Error in Line",
                             f"nb_drones must be a positive integer, got '{value}'"
                         )
                 else:
                     if key == "nb_drones":
                         raise ParserError(
                             line_number,
-                            f"ParserError Error in Line",
                             f"nb_drones must be a positive integer, got '{value}'"
                         )
                 if key not in self.required:
                     raise ParserError(
                         line_number,
-                        f"ParserError Error in Line",
                         f"unknown keyword '{key}', expected one of [start_hub, end_hub, hub, connection]"
                     )
 
@@ -322,47 +315,25 @@ class Parser:
                             key == "end_hub"
                             or key == "start_hub"
                         ):
-                            if self.start_end_check[key]:
+                            if self.is_registered[key]:
                                 raise ParserError(
                                         line_number,
-                                        f"ParserError Error in Line",
                                         f"duplicated [{key}] Only one '{key}' is allowed per map"
                                     )
-                            self.start_end_check[key] = True
+                            self.is_registered[key] = True
                             hub_dict = self.get_hub_details(value, True, self.nb_drones)
                         else:
                             hub_dict = self.get_hub_details(value, False, 1)
                     except HubFormatError as e:
                         raise ParserError(
                             line_number,
-                            f"ParserError Error in Line",
                             f"invalid hub definition — {str(e)}"
                         )
                     except HubMetadataError as e:
                         raise ParserError(
                             line_number,
-                            f"ParserError Error in Line",
                             f"invalid hub metadata — {str(e)}"
                         )
-                    if hub_dict["name"] in self.zone_names:
-                        raise ParserError(
-                            line_number,
-                            f"ParserError Error in Line",
-                            f"duplicate zone name '{hub_dict['name']}"
-                        )
-                    if "-" in hub_dict["name"]:
-                        raise ParserError(
-                            line_number,
-                            f"ParserError Error in Line",
-                            f"zone name '{hub_dict['name']}' cannot contain '-'"                        
-                        )
-                    elif (hub_dict["x"], hub_dict["y"]) in self.coordinates:
-                        raise ParserError(
-                            line_number,
-                            f"ParserError Error in Line",
-                            f"zone '{hub_dict['name']}' shares coordinates "
-                            f"({hub_dict['x']}, {hub_dict['y']}) with an existing zone"
-                            )
                     self.zone_names.add(hub_dict["name"])
                     self.coordinates.add((hub_dict["x"], hub_dict["y"]))
                     hub = Hub(**hub_dict)
@@ -379,7 +350,6 @@ class Parser:
                     except ConnectionEdgError as e:
                         raise ParserError(
                             line_number,
-                            f"ParserError Error in Line",
                             f"invalid connection edge — {str(e)}"
                         )
                     except ConnectionMetadataError as e:
@@ -391,14 +361,12 @@ class Parser:
                     if src_name not in self.zone_names:
                         raise ParserError(
                             line_number,
-                            f"ParserError Error in Line",
                             f"unknown zone '{src_name}' — "
                             f"zone must be defined before being used in a connection"
                         )
                     if dest_name not in self.zone_names:
                             raise ParserError(
                             line_number,
-                            f"ParserError Error in Line",
                             f"unknown zone '{dest_name}' — "
                             f"zone must be defined before being used in a connection"
                         )
@@ -406,7 +374,6 @@ class Parser:
                     if connection in self.connections:
                         raise ParserError(
                             line_number,
-                            f"ParserError Error in Line",
                             f"duplicate connection '{src_name}-{dest_name}' — "
                             f"connection already defined"   
                         )
@@ -423,10 +390,10 @@ class Parser:
                     } 
                     self.graph[src] += [dest]
                     self.graph[dest] += [src]
+                next_start = line_number
             if next_start == 0:
                 raise ParserError(
                         next_start + 1,
-                        f"ParserError Error in Line",
                         "the map file is empty"
                 )
             return {

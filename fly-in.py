@@ -1,13 +1,13 @@
 import arcade
-import parser
+from parser import Parser
 import warnings
 from utils import Map, Drone
-from error_classes import ParserError, Grapherror
+from error_classes import ParserError, Grapherror, Errors
 import math
+import sys
 from rich.panel import Panel
 from rich.console import Console
 from rich.traceback import install
-from rich.markup import escape
 import sys
 install()
 
@@ -166,39 +166,18 @@ class SimulationWindow(arcade.View):
 
 
 
-def display_error(error: Exception, filepath: str ) -> None:
-    from rich.console import Console
-    from rich.syntax import Syntax
-    from rich_pixels import Pixels
-    from PIL import Image
-
-    console = Console()
-    line_str, title, error_msg = error.args
-    line_number = int(line_str)
-    console.print()
-    if "No valid path exists" in error_msg:
-        console.print(
-            "idk"            
-        )        
-    else:
-        console.print(Panel(
-            Syntax.from_path(
-                filepath,
-                line_numbers=True,
-                highlight_lines={line_number},
-                line_range=(max(1, line_number - 4), line_number + 4),
-                theme="ansi_dark"
-            ),
-            title=f"[bold red]Traceback[/bold red]",
-            border_style="red",
-        ))
-        console.print(f"[bold red]{title} [{line_number}]:[/bold red]\n[red]{escape(error_msg)}[/red]")
-        console.print()
 
 
 
 def main() -> None:
     warnings.filterwarnings("ignore")
+    if len(sys.argv) != 2:
+        console = Console()
+        console.print("[red]Error:[/red] Expected exactly one argument.")
+        console.print("Usage:   [bold]python fly-in.py <path/to/map>[/bold]")
+   
+        sys.exit(1)
+    parser = Parser(sys.argv[1])
     main_map = Map(**parser.main_parser())
     window = arcade.Window(width=1920, height=1010)
     game = SimulationWindow(main_map)
@@ -212,11 +191,11 @@ if __name__ == "__main__":
     try:
         main()
     except ParserError as e:
-            display_error(e, sys.argv[1])
+            Errors.display_error(e, sys.argv[1])
     except Grapherror as e:
-        display_error(e, sys.argv[1])
+        Errors.display_error(e, sys.argv[1])
     except Exception as e:
-        display_error(e, sys.argv[1])
+        Errors.display_error(e)
     except KeyboardInterrupt:
         print("""
  ▄████  ▄████▄ ▄████▄ ████▄  █████▄ ██  ██ ██████

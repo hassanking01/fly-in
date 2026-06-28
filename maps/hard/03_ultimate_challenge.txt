@@ -17,10 +17,10 @@ hub: maze_loop3 4 1 [color=purple max_drones=3]
 hub: maze_loop4 3 2 [color=purple max_drones=3]
 hub: maze_correct 2 0 [color=blue max_drones=3]
 
-# Layer 3: Capacity nightmare section
+# zone=restricted Layer 3: Capacity nightmare section
 hub: bottleneck1 3 0 [color=yellow max_drones=2]
 hub: bottleneck2 4 0 [color=yellow max_drones=1]
-hub: overflow1 3 -1 [zone=restricted color=orange max_drones=3]
+hub: overflow1 3 -1 [color=orange max_drones=3]
 hub: overflow2 4 -1 [zone=restricted color=orange max_drones=3]
 
 # Layer 4: Priority puzzle with traps

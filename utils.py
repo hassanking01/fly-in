@@ -93,11 +93,9 @@ class Map:
                 if neighbor.type == "blocked":
                     continue
                 queue += [neighbor]
-        print(self.end not in visited)
         if self.end not in visited:
             raise Grapherror(
                 0,
-                "GraphError",
                 f"No valid path exists from '{self.start}' to '{self.end}'.",                
             )
 
@@ -121,7 +119,6 @@ class Map:
                             continue
                         raise Grapherror(
                             index,
-                            f"GraphError in line",
                             f"hub '{hub.name}' at ({hub.x}, {hub.y}) is unreachable — "
                             f"every hub must be connected to the graph"
                         )
