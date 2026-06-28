@@ -6,7 +6,9 @@ from error_classes import ParserError, Grapherror
 import math
 from rich.panel import Panel
 from rich.console import Console
-
+from rich.traceback import install
+import sys
+install()
 
 class SimulationWindow(arcade.View):
     def __init__(self, main_map: Map) -> None:
@@ -78,11 +80,9 @@ class SimulationWindow(arcade.View):
                     drone.next = next
                 if self.on_next_turn:
                     self.puase = True
-                    self.is_sim_end = True
+                self.is_sim_end = all(drone.current.is_goal_hub for drone in self.main_map.drones)
 
     def on_draw(self) -> None:
-        if all(d.current == self.main_map.end for d in self.main_map.drones):
-            return
         self.clear()
         self.camera.use()
         wrct = arcade.rect.XYWH(self.width // 2, self.height // 2, 1920, 1080)
@@ -163,6 +163,29 @@ class SimulationWindow(arcade.View):
             else:
                 self.puase = True
 
+from rich.console import Console
+from rich.syntax import Syntax
+
+def display_error(error: Exception, filepath: str ) -> None:
+    console = Console()
+    title, error_msg = str(error).split("\n")
+    line_number = int(title.split("[")[1].split("]")[0])
+    console.print()
+    console.print(Panel(
+        Syntax.from_path(
+            filepath,
+            line_numbers=True,
+            highlight_lines={line_number},
+            line_range=(max(1, line_number - 4), line_number + 4),
+            theme="ansi_dark"
+        ),
+        title=f"[bold red]Traceback[/bold red]",
+        border_style="red",
+    ))
+    console.print(f"[bold red]ParserError {title}[/bold red]\n[red]{error_msg}[/red]")
+    console.print()
+
+
 
 def main() -> None:
     warnings.filterwarnings("ignore")
@@ -175,17 +198,18 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
-#     try:
-#     except ParserError as e:
-#         print(e)
-#     except Grapherror as e:
-#         print(e)
-#     except Exception as e:
-#         print(e)
-#     except KeyboardInterrupt:
-#         print("""
-#  ▄████  ▄████▄ ▄████▄ ████▄  █████▄ ██  ██ ██████
-# ██  ▄▄▄ ██  ██ ██  ██ ██  ██ ██▄▄██  ▀██▀  ██▄▄
-#  ▀███▀  ▀████▀ ▀████▀ ████▀  ██▄▄█▀   ██   ██▄▄▄▄
-# """)
+
+    try:
+        main()
+    except ParserError as e:
+            display_error(e.args[0], sys.argv[1])
+    except Grapherror as e:
+        display_error(e, sys.argv[1])
+    except Exception as e:
+        display_error(e, sys.argv[1])
+    except KeyboardInterrupt:
+        print("""
+ ▄████  ▄████▄ ▄████▄ ████▄  █████▄ ██  ██ ██████
+██  ▄▄▄ ██  ██ ██  ██ ██  ██ ██▄▄██  ▀██▀  ██▄▄
+ ▀███▀  ▀████▀ ▀████▀ ████▀  ██▄▄█▀   ██   ██▄▄▄▄
+""")

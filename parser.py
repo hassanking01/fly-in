@@ -2,9 +2,11 @@ from utils import Hub
 import sys
 from typing import Any, Dict, Optional
 from error_classes import (
+    ParserError,
     HubFormatError,
     HubMetadataError,
-    ConnectionMetadataError
+    ConnectionMetadataError,
+    ConnectionEdgError
     )
 
 
@@ -22,9 +24,6 @@ def get_hub_details(
     )
     line = " ".join(file_line.split())
     values = line.split(" ", 3)
-    # name = None
-    # x: Optional[str] = None
-    # y: Optional[str] = None
     metadata: list[str] = []
     parsed_metadata: Optional[Dict[str, Any]] = None
 
@@ -37,8 +36,21 @@ def get_hub_details(
         }
     elif len(values) == 4:
         name, str_x, str_y, raw_metadata = values
-        if "[" not in raw_metadata or "]" not in raw_metadata:
-            raise ValueError("shi idk")
+        if (
+            raw_metadata[0] != "["
+            or raw_metadata[-1] != "]"
+            or raw_metadata.count("[") != 1
+            or raw_metadata.count("]") != 1
+        ):
+            if raw_metadata[0] != "[":
+                error = "missing opening bracket '['"
+            elif raw_metadata[-1] != "]":
+                error = "missing closing bracket ']'"
+            elif raw_metadata.count("[") > 1:
+                error = "multiple opening brackets '['"
+            elif raw_metadata.count("]") > 1:
+                error = "multiple closing brackets ']'"
+            raise HubMetadataError(f"{error}\n{metadata_format_error}")
         metadata = raw_metadata.strip("[]").split()
         line = ""
         parsed_metadata = {}
@@ -73,6 +85,9 @@ def get_hub_details(
                             "invalid max_drones — max_drones must be valid int"
                             f"\nmetadata format {metadata_format_error}"
                         )
+                    if cased_value <= 0:
+                        raise HubMetadataError(
+                            f"max_drones must be a positive integer, got '{cased_value}'")
 
                 if key not in keys:
                     raise HubMetadataError(
@@ -143,7 +158,19 @@ def get_hub_details(
 def get_connection_details(edg: str) -> tuple[str, str, str, int]:
     edg = " ".join(edg.split())
     data = edg.split(" ", 1)
-    line, src, dest = data[0].split("-")
+    if "-" not in data[0]:
+        raise ConnectionEdgError(
+            f"zone names must be separated by '-', got '{data[0]}'"
+            )
+    if data[0][0] == "-" or data[0][-1] == "-":
+        raise ConnectionEdgError(
+            f"zone name cannot be empty in '{data[0]}'"
+        )
+    if data[0].count("-") > 1:
+        raise ConnectionEdgError(
+            f"expected exactly one '-' separator, got '{data[0]}'"
+        )            
+    src, dest = get_key_value(sep="-", line=data[0])
     if len(data) == 1:
         metadata = "max_link_capacity=1"
     else:
@@ -167,6 +194,8 @@ def get_connection_details(edg: str) -> tuple[str, str, str, int]:
             or metadata[0] == "="
             or metadata[-1] == "="
             or metadata.count("=") > 1
+            or metadata.count("[")
+            or metadata.count("]")
         ):
             is_metadata_good = False
         else:
@@ -176,13 +205,17 @@ def get_connection_details(edg: str) -> tuple[str, str, str, int]:
                 value = int(str_value)
             except ValueError:
                 is_metadata_good = False
+            if value <= 0 and key == "max_link_capacity":
+                raise ConnectionMetadataError(
+                    f"max_link_capacity must be a positive integer, got '{value}'"
+                )
         if key != "max_link_capacity":
             is_metadata_good = False
     if not metadata or not is_metadata_good:
         raise ConnectionMetadataError(
             "expected metadata in the form [max_link_capacity=<value: int>]"
         )
-    return (line, src, dest, value)
+    return (src, dest, value)
 
 
 def get_key_value(sep: str, line: str) -> tuple[str, ...]:
@@ -195,14 +228,14 @@ def main_parser() -> Dict[str, Any]:
     coordinates = set()
     graph: Dict[Hub, list[Hub]] = {}
     Hubs: dict[str, Hub] = {}
-    edges = []
+    connections = set()
     start_hub = None
     end_hub = None
     nb_drones = -1
     required = {"start_hub", "end_hub", "hub", "connection"}
     next_start = 0
     with open(map_path, mode='r') as file:
-        for i, line in enumerate(file, start=1):
+        for line_number, line in enumerate(file, start=1):
             line = line.strip()
             if line.startswith("#") or not line:
                 continue
@@ -212,111 +245,150 @@ def main_parser() -> Dict[str, Any]:
                     or "nb_drones" not in line
                     or line.count(":") != 1
                     ):
-                raise ValueError(f"[{i}]invalide params in nd_drons")
-
+                if ":" not in line:
+                    raise ParserError(
+                        f"Error in Line [{line_number}]:\n"
+                        f"missing ':' separator, got '{line}'"
+                    )
+                if line.count(":") != 1:
+                    raise ParserError(
+                        f"Error in Line [{line_number}]:\n"
+                        f"expected exactly one ':', got '{line}'"
+                    )
+                if not line.startswith("nb_drones"):
+                    raise ParserError(
+                        f"Error in Line [{line_number}]:\n"
+                        f"first line must be 'nb_drones: <number>', got '{line}'"
+                    )
             key, value = get_key_value(":", line)
             try:
                 nb_drones = int(value)
-                if nb_drones <= 0:
-                    raise ValueError(f"{nb_drones}")
-            except ValueError as e:
-                raise ValueError(f"invalid number of drones: {e}")
-            next_start = i
+                valid = nb_drones > 0
+            except ValueError:
+                valid = False
+            if not valid:
+                raise ParserError(
+                    f"Error in Line [{line_number}]:\n"
+                    f"nb_drones must be a positive integer, got '{value}'"
+                )
+            next_start = line_number
             break
-        for i, line in enumerate(file, start=next_start + 1):
+            
+        for line_number, line in enumerate(file, start=next_start + 1):
             line = line.strip()
             if line.startswith("#") or not line:
                 continue
             line.lower()
-            if ":" not in line or line.count(":") != 1:
-                raise ValueError(f"invalide params in line [{i}]")
+            if ":" not in line:
+                raise ParserError(
+                    f"in Line [{line_number}]:\n"
+                    f"missing ':' separator, got '{line}'"
+                )
+            if line.count(":") != 1:
+                raise ParserError(
+                    f"in Line [{line_number}]:\n"
+                    f"multiple ':' found, expected exactly one, got '{line}'"
+                )
             key, value = get_key_value(":", line)
             if key not in required:
-                raise ValueError(
-                    "invalide params in line"
-                    f" [{i}] {key} is not a valid key"
+                raise ParserError(
+                    f"in Line [{line_number}]:\n"
+                    f"unknown keyword '{key}', expected one of [nb_drones, start_hub, end_hub, hub, connection]"
                 )
 
-            if key == "hub":
-                hub_dict = get_hub_details(value, False, 1)
+            if (
+                key == "hub"
+                or key == "start_hub"
+                or key == "end_hub"):
+                try:
+                    if (
+                        key == "end_hub"
+                        or key == "start_hub"
+                    ):
+                        hub_dict = get_hub_details(value, True, nb_drones)
+                    else:
+                        hub_dict = get_hub_details(value, False, 1)
+                except HubFormatError as e:
+                    raise ParserError(
+                        f"in Line [{line_number}]:\n"
+                        f"invalid hub definition — {e}"
+                    )
+                except HubMetadataError as e:
+                    raise ParserError(
+                        f"in Line [{line_number}]:\n"
+                        f"invalid hub metadata — {e}"
+                    )
                 if hub_dict["name"] in zone_names:
-                    raise ValueError(
-                        f"error in line [{i}]:"
-                        " can't be duplicate name in hubs"
+                    raise ParserError(
+                        f"in Line [{line_number}]:\n"
+                        f"duplicate zone name '{hub_dict['name']}"
+                    )
+                if "-" in hub_dict["name"]:
+                    raise ParserError(
+                        f"in Line [{line_number}]:\n"
+                        f"zone name '{hub_dict['name']}' cannot contain '-'"                        
                     )
                 elif (hub_dict["x"], hub_dict["y"]) in coordinates:
-                    raise ValueError(
-                        f"error in line [{i}]:"
-                        " same coordinates with different hub"
-                    )
-
+                    raise ParserError(
+                            f"in Line [{line_number}]:\n"
+                            f"zone '{hub_dict['name']}' shares coordinates "
+                            f"({hub_dict['x']}, {hub_dict['y']}) with an existing zone"
+                        )
                 zone_names.add(hub_dict["name"])
                 coordinates.add((hub_dict["x"], hub_dict["y"]))
                 hub = Hub(**hub_dict)
                 graph[hub] = []
                 Hubs[hub.name] = hub
+                if key == "start_hub":
+                    start_hub = hub
+                if key == "end_hub":
+                    end_hub = hub
+                    end_hub.is_goal_hub = True
             elif key == "connection":
-                edges += [f"{i}-{value}"]
-            elif key == "start_hub":
-                hub_dict = get_hub_details(value, True, nb_drones)
-                if hub_dict["name"] in zone_names:
-                    raise ValueError(
-                        f"error in line [{i}]:"
-                        " can't be duplicate name in hubs"
+                try:
+                    src_name, dest_name, mlc = get_connection_details(value)
+                except ConnectionEdgError as e:
+                    raise ParserError(
+                        f"in Line [{line_number}]:\n"
+                        f"invalid connection edge — {e}"
                     )
-
-                elif (hub_dict["x"], hub_dict["y"]) in coordinates:
-                    raise ValueError(
-                        f"error in line [{i}]:"
-                        " same coordinates with different hub"
+                except ConnectionMetadataError as e:
+                    raise ParserError(
+                        f"in Line [{line_number}]:\n"
+                        f"invalid connection metadata — {e}"
                     )
-
-                zone_names.add(hub_dict["name"])
-                coordinates.add((hub_dict["x"], hub_dict["y"]))
-                start_hub = Hub(**hub_dict)
-                graph[start_hub] = []
-                Hubs[start_hub.name] = start_hub
-
-            elif key == "end_hub":
-                hub_dict = get_hub_details(value, True, nb_drones)
-                if hub_dict["name"] in zone_names:
-                    raise ValueError(
-                        f"error in line [{i}]:"
-                        " can't be duplicate name in hubs"
+                if src_name not in zone_names:
+                    raise ParserError(
+                        f"in Line [{line_number}]:\n"
+                        f"unknown zone '{src_name}' — "
+                        f"zone must be defined before being used in a connection"
                     )
-                elif (hub_dict["x"], hub_dict["y"]) in coordinates:
-                    raise ValueError(
-                        f"error in line [{i}]:"
-                        " same coordinates with different hub"
+                if dest_name not in zone_names:
+                        raise ParserError(
+                        f"in Line [{line_number}]:\n"
+                        f"unknown zone '{dest_name}' — "
+                        f"zone must be defined before being used in a connection"
                     )
-                zone_names.add(hub_dict["name"])
-                coordinates.add((hub_dict["x"], hub_dict["y"]))
-                end_hub = Hub(**hub_dict)
-                end_hub.is_goal_hub = True
-                graph[end_hub] = []
-                Hubs[end_hub.name] = end_hub
-        for edg in edges:
-            line, src_name, dest_name, mlc = get_connection_details(edg)
-            if src_name not in zone_names:
-                raise ValueError(
-                    f"error in line [{line}]: {src_name} is not hub"
-                )
-            if dest_name not in zone_names:
-                raise ValueError(
-                    f"error in line [{line}]: {dest_name} is not hub"
-                )
-            src = Hubs[src_name]
-            dest = Hubs[dest_name]
-            src.connections[dest] = {
-                "max_link_capacity": mlc,
-                "on_road": 0
-            }
-            dest.connections[src] = {
-                "max_link_capacity": mlc,
-                "on_road": 0
-            } 
-            graph[src] += [dest]
-            graph[dest] += [src]
+                connection = tuple(sorted((src_name, dest_name)))
+                if connection in connections:
+                    raise ParserError(
+                        f"in Line [{line_number}]:\n"
+                        f"duplicate connection '{src_name}-{dest_name}' — "
+                        f"connection already defined"   
+                    )
+                connections.add(connection)
+                src = Hubs[src_name]
+                dest = Hubs[dest_name]
+                src.connections[dest] = {
+                    "max_link_capacity": mlc,
+                    "on_road": 0
+                }
+                dest.connections[src] = {
+                    "max_link_capacity": mlc,
+                    "on_road": 0
+                } 
+                graph[src] += [dest]
+                graph[dest] += [src]
         return {
             "graph": graph,
             "start": start_hub,

@@ -6,6 +6,8 @@ class HubMetadataError(ParserError):
     pass
 
 
+class ConnectionEdgError(ParserError):
+    pass
 class ConnectionMetadataError(ParserError):
     pass
 
