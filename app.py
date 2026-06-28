@@ -7,6 +7,7 @@ import math
 from rich.panel import Panel
 from rich.console import Console
 from rich.traceback import install
+from rich.markup import escape
 import sys
 install()
 
@@ -14,7 +15,6 @@ class SimulationWindow(arcade.View):
     def __init__(self, main_map: Map) -> None:
         self.camera = arcade.camera.Camera2D()
         self.main_map = main_map
-        self.main_map.compute_costs()
         super().__init__()
         self.on_next_turn = False
         self.console = Console()
@@ -24,7 +24,7 @@ class SimulationWindow(arcade.View):
         self.hub_radius = 30
         self.puase = True
         self.background = arcade.load_texture("./background.jpg")
-        self.main_map.scale_and_center_hubs(self.zoom, self.cx, self.cy, 0, 0)
+        self.main_map.scale_and_center_hubs(self.zoom, self.cx, self.cy)
         self.turns = 0
         self.is_sim_end = False
         self.current_zoom = 1.0
@@ -84,9 +84,9 @@ class SimulationWindow(arcade.View):
 
     def on_draw(self) -> None:
         self.clear()
-        self.camera.use()
         wrct = arcade.rect.XYWH(self.width // 2, self.height // 2, 1920, 1080)
         arcade.draw_texture_rect(self.background, wrct)
+        # self.camera.use()
         arcade.draw_text(
             f"Turns: {self.turns}",
             0,
@@ -96,53 +96,54 @@ class SimulationWindow(arcade.View):
             font_name="Black Ops One",
         )
         visited = set()
-        for start in self.main_map.graph:
-            for end in self.main_map.graph[start]:
-                if start.name > end.name:
-                    key = f"{start.name}-{end.name}"
-                else:
-                    key = f"{end.name}-{start.name}"
-                if key in visited:
-                    continue
-                arcade.draw_line(
-                    int(start.x),
-                    int(start.y),
-                    int(end.x),
-                    int(end.y),
-                    arcade.csscolor.DARK_GRAY,
-                    5,
+        with self.camera.activate() :
+            for start in self.main_map.graph:
+                for end in self.main_map.graph[start]:
+                    if start.name > end.name:
+                        key = f"{start.name}-{end.name}"
+                    else:
+                        key = f"{end.name}-{start.name}"
+                    if key in visited:
+                        continue
+                    arcade.draw_line(
+                        int(start.x),
+                        int(start.y),
+                        int(end.x),
+                        int(end.y),
+                        arcade.csscolor.DARK_GRAY,
+                        5,
+                    )
+                    visited.add(key)
+            for hub in self.main_map.graph:
+                arcade.draw_circle_filled(
+                    hub.x, hub.y, self.hub_radius + 4, arcade.csscolor.DARK_GRAY
                 )
-                visited.add(key)
-        for hub in self.main_map.graph:
-            arcade.draw_circle_filled(
-                hub.x, hub.y, self.hub_radius + 4, arcade.csscolor.DARK_GRAY
-            )
-            arcade.draw_circle_filled(hub.x, hub.y, self.hub_radius, hub.color)
-            angle = math.radians(50)
+                arcade.draw_circle_filled(hub.x, hub.y, self.hub_radius, hub.color)
+                angle = math.radians(50)
 
-            dot_x = hub.x + (self.hub_radius + 4) * math.cos(angle)
-            dot_y = hub.y + (self.hub_radius + 4) * math.sin(angle)
-            arcade.draw_circle_filled(dot_x, dot_y, 13, arcade.csscolor.DARK_GRAY)
-            arcade.draw_circle_filled(dot_x, dot_y, 10, arcade.csscolor.ROYAL_BLUE)
-            arcade.draw_text(
-                f"{hub.type[0].upper()}",
-                dot_x - 1,
-                dot_y + 1,
-                arcade.csscolor.DARK_RED,
-                9,
-                font_name="JetBrains Mono",
-                anchor_x="center",
-                anchor_y="center",
-            )
-        for drone in self.main_map.drones:
-            arcade.draw_circle_filled(drone.x, drone.y, 10, drone.color)
+                dot_x = hub.x + (self.hub_radius + 4) * math.cos(angle)
+                dot_y = hub.y + (self.hub_radius + 4) * math.sin(angle)
+                arcade.draw_circle_filled(dot_x, dot_y, 13, arcade.csscolor.DARK_GRAY)
+                arcade.draw_circle_filled(dot_x, dot_y, 10, arcade.csscolor.ROYAL_BLUE)
+                arcade.draw_text(
+                    f"{hub.type[0].upper()}",
+                    dot_x - 1,
+                    dot_y + 1,
+                    arcade.csscolor.DARK_RED,
+                    9,
+                    font_name="JetBrains Mono",
+                    anchor_x="center",
+                    anchor_y="center",
+                )
+            for drone in self.main_map.drones:
+                arcade.draw_circle_filled(drone.x, drone.y, 10, drone.color)
 
     def on_mouse_drag(
         self, x: int, y: int, dx: int, dy: int, buttons: int, modifiers: int
     ) -> None:
-        self.cx += dx
-        self.cy += dy
-        self.main_map.scale_and_center_hubs(self.zoom, self.cx, self.cy, dx, dy)
+        self.cx -= dx
+        self.cy -= dy
+        self.camera.position = (self.cx, self.cy)
 
     def on_key_press(self, symbol: int, modifiers: int) -> None:
         if symbol == arcade.key.R and (modifiers & arcade.key.MOD_CTRL):
@@ -163,27 +164,36 @@ class SimulationWindow(arcade.View):
             else:
                 self.puase = True
 
-from rich.console import Console
-from rich.syntax import Syntax
+
 
 def display_error(error: Exception, filepath: str ) -> None:
+    from rich.console import Console
+    from rich.syntax import Syntax
+    from rich_pixels import Pixels
+    from PIL import Image
+
     console = Console()
-    title, error_msg = str(error).split("\n")
-    line_number = int(title.split("[")[1].split("]")[0])
+    line_str, title, error_msg = error.args
+    line_number = int(line_str)
     console.print()
-    console.print(Panel(
-        Syntax.from_path(
-            filepath,
-            line_numbers=True,
-            highlight_lines={line_number},
-            line_range=(max(1, line_number - 4), line_number + 4),
-            theme="ansi_dark"
-        ),
-        title=f"[bold red]Traceback[/bold red]",
-        border_style="red",
-    ))
-    console.print(f"[bold red]ParserError {title}[/bold red]\n[red]{error_msg}[/red]")
-    console.print()
+    if "No valid path exists" in error_msg:
+        console.print(
+            "idk"            
+        )        
+    else:
+        console.print(Panel(
+            Syntax.from_path(
+                filepath,
+                line_numbers=True,
+                highlight_lines={line_number},
+                line_range=(max(1, line_number - 4), line_number + 4),
+                theme="ansi_dark"
+            ),
+            title=f"[bold red]Traceback[/bold red]",
+            border_style="red",
+        ))
+        console.print(f"[bold red]{title} [{line_number}]:[/bold red]\n[red]{escape(error_msg)}[/red]")
+        console.print()
 
 
 
@@ -192,8 +202,8 @@ def main() -> None:
     main_map = Map(**parser.main_parser())
     window = arcade.Window(width=1920, height=1010)
     game = SimulationWindow(main_map)
-    window.show_view(game)
     game.setup()
+    window.show_view(game)
     arcade.run()
 
 
@@ -202,7 +212,7 @@ if __name__ == "__main__":
     try:
         main()
     except ParserError as e:
-            display_error(e.args[0], sys.argv[1])
+            display_error(e, sys.argv[1])
     except Grapherror as e:
         display_error(e, sys.argv[1])
     except Exception as e:

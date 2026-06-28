@@ -3,8 +3,7 @@ from colors import colors
 import random
 import heapq
 from error_classes import Grapherror
-
-from pprint import pprint
+import sys
 
 
 class Hub:
@@ -56,7 +55,9 @@ class Map:
         self.nb_drones = nb_drones
         self.drones: List[Drone] = [Drone() for _ in range(self.nb_drones)]
         self.zone_costs = {"priority": 1, "normal": 2, "restricted": 3}
-
+        self.is_end_have_path()
+        self.check_disconnected_graph()
+        self.compute_costs()
     def set_drones(self) -> None:
         for drone in self.drones:
             drone.graph = self.graph
@@ -80,42 +81,74 @@ class Map:
         self.start.current_drones_count = self.nb_drones
         self.set_drones()
 
+    def is_end_have_path(self):
+        queue: list[Hub] = [self.start]
+        visited: set[Hub] = set()
+        while queue:
+            current = queue.pop(0)
+            if current in visited:
+                continue
+            visited.add(current)
+            for neighbor in self.graph[current]:
+                if neighbor.type == "blocked":
+                    continue
+                queue += [neighbor]
+        print(self.end not in visited)
+        if self.end not in visited:
+            raise Grapherror(
+                0,
+                "GraphError",
+                f"No valid path exists from '{self.start}' to '{self.end}'.",                
+            )
+
+    def check_disconnected_graph(self):
+        queue: list[Hub] = [self.start]
+        visited: set[Hub] = set([self.end])
+        while queue:
+            currnt = queue.pop(0)
+            if currnt in visited:
+                continue
+            visited.add(currnt)
+            for neighbor in self.graph[currnt]:
+                if neighbor in visited:
+                    continue
+                queue += [neighbor]
+        for hub in self.graph:
+            if hub not in visited:
+                with open(sys.argv[1], 'r') as file:
+                    for index , line in enumerate(file, start=1):
+                        if hub.name not in line:
+                            continue
+                        raise Grapherror(
+                            index,
+                            f"GraphError in line",
+                            f"hub '{hub.name}' at ({hub.x}, {hub.y}) is unreachable — "
+                            f"every hub must be connected to the graph"
+                        )
+
     def scale_and_center_hubs(
             self,
             zoom: int,
             cx: int,
             cy: int,
-            move_x: int,
-            move_y: int
             ) -> None:
 
         for hub in self.graph:
             x, y = hub.pos
             hub.x = x * zoom + cx
             hub.y = y * zoom + cy
-        for drone in self.drones:
-            drone.x += move_x
-            drone.y += move_y
 
     def compute_costs(self) -> None:
         heap: list[Hub] = [self.end]
-        visited: set[Hub] = set([self.end])
         while heap:
             currnt = heapq.heappop(heap)
             for neighber in self.graph[currnt]:
-                visited.add(neighber)
                 if neighber.type == "blocked":
                     continue
                 new_cost = currnt.cost + self.zone_costs[neighber.type]
                 if neighber.cost > new_cost:
                     neighber.cost = new_cost
                     heap += [neighber]
-        for hub in self.graph:
-            if hub not in visited:
-                raise Grapherror(
-                    f"hub '{hub.name}' at ({hub.x}, {hub.y}) is unreachable — "
-                    f"every hub must be connected to the graph"
-                )
 
 
 class Drone:
