@@ -8,8 +8,10 @@ import sys
 from rich.panel import Panel
 from rich.console import Console
 from rich.traceback import install
-import sys
+
+
 install()
+
 
 class SimulationWindow(arcade.View):
     def __init__(self, main_map: Map) -> None:
@@ -19,8 +21,10 @@ class SimulationWindow(arcade.View):
         self.on_next_turn = False
         self.console = Console()
         self.zoom = 100
-        self.cx = self.width // 2 - ((self.main_map.end.x * self.zoom) // 2)
-        self.cy = self.height // 2
+        self.cx = int(
+            self.width // 2 - ((self.main_map.end.x * self.zoom) // 2)
+        )
+        self.cy = int(self.height // 2)
         self.camera.position = (self.cx, self.cy)
         self.hub_radius = 30
         self.puase = True
@@ -30,7 +34,14 @@ class SimulationWindow(arcade.View):
         self.is_sim_end = False
         self.current_zoom = 1.0
         self.debug = False
-    def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
+
+    def on_mouse_scroll(
+            self,
+            x: int,
+            y: int,
+            scroll_x: int,
+            scroll_y: int
+            ) -> None:
         self.current_zoom += scroll_y * 0.1
         self.current_zoom = max(0.6, min(5.0, self.current_zoom))
         self.camera.zoom = self.current_zoom
@@ -38,9 +49,11 @@ class SimulationWindow(arcade.View):
     def setup(self) -> None:
         self.main_map.set_drones()
 
-    def print_turns(self, moved_drones: list[Drone]):
+    def print_turns(self, moved_drones: list[Drone]) -> None:
         line = "[cyan]"
         for drone in moved_drones:
+            if not drone.next or not drone.current:
+                continue
             if drone.next.type == "restricted" and drone.first_half:
                 line += f"{drone.name}-{drone.current.name}-{drone.next.name} "
                 continue
@@ -51,7 +64,8 @@ class SimulationWindow(arcade.View):
         panel = Panel(
             line,
             title=f"[bold yellow]TURN {self.turns}[/bold yellow]",
-            border_style="red")
+            border_style="red",
+        )
         self.console.print(panel)
 
     def on_update(self, delta_time: float) -> None:
@@ -73,6 +87,8 @@ class SimulationWindow(arcade.View):
                     next = drone.find_next(self.turns)
                     if next:
                         next.current_drones_count += 1
+                        if not drone.current:
+                            continue
                         next.connections[drone.current]["on_road"] += 1
                         if drone.current:
                             drone.current.current_drones_count -= 1
@@ -81,7 +97,10 @@ class SimulationWindow(arcade.View):
                     drone.next = next
                 if self.on_next_turn:
                     self.puase = True
-                self.is_sim_end = all(drone.current.is_goal_hub for drone in self.main_map.drones)
+                self.is_sim_end = all(
+                    drone.current.is_goal_hub
+                    for drone in self.main_map.drones if drone.current
+                )
 
     def on_draw(self) -> None:
         self.clear()
@@ -96,7 +115,7 @@ class SimulationWindow(arcade.View):
             font_name="Black Ops One",
         )
         visited = set()
-        with self.camera.activate() :
+        with self.camera.activate():
             for start in self.main_map.graph:
                 for end in self.main_map.graph[start]:
                     if start.name > end.name:
@@ -116,15 +135,33 @@ class SimulationWindow(arcade.View):
                     visited.add(key)
             for hub in self.main_map.graph:
                 arcade.draw_circle_filled(
-                    hub.x, hub.y, self.hub_radius + 4, arcade.csscolor.DARK_GRAY, num_segments=100
+                    hub.x,
+                    hub.y,
+                    self.hub_radius + 4,
+                    arcade.csscolor.DARK_GRAY,
+                    num_segments=100,
                 )
-                arcade.draw_circle_filled(hub.x, hub.y, self.hub_radius, hub.color, num_segments=100)
+                arcade.draw_circle_filled(
+                    hub.x, hub.y, self.hub_radius, hub.color, num_segments=100
+                )
                 angle = math.radians(50)
 
                 dot_x = hub.x + (self.hub_radius + 4) * math.cos(angle)
                 dot_y = hub.y + (self.hub_radius + 4) * math.sin(angle)
-                arcade.draw_circle_filled(dot_x, dot_y, 13, arcade.csscolor.DARK_GRAY,  num_segments=100)
-                arcade.draw_circle_filled(dot_x, dot_y, 10, arcade.csscolor.ROYAL_BLUE,  num_segments=100)
+                arcade.draw_circle_filled(
+                    dot_x,
+                    dot_y,
+                    13,
+                    arcade.csscolor.DARK_GRAY,
+                    num_segments=100
+                )
+                arcade.draw_circle_filled(
+                    dot_x,
+                    dot_y,
+                    10,
+                    arcade.csscolor.ROYAL_BLUE,
+                    num_segments=100
+                )
                 arcade.draw_text(
                     f"{hub.type[0].upper()}",
                     dot_x - 1,
@@ -136,7 +173,9 @@ class SimulationWindow(arcade.View):
                     anchor_y="center",
                 )
             for drone in self.main_map.drones:
-                arcade.draw_circle_filled(drone.x, drone.y, 10, drone.color,  num_segments=100)
+                arcade.draw_circle_filled(
+                    drone.x, drone.y, 10, drone.color, num_segments=100
+                )
 
     def on_mouse_drag(
         self, x: int, y: int, dx: int, dy: int, buttons: int, modifiers: int
@@ -166,17 +205,13 @@ class SimulationWindow(arcade.View):
                 self.puase = True
 
 
-
-
-
-
 def main() -> None:
     warnings.filterwarnings("ignore")
     if len(sys.argv) != 2:
         console = Console()
         console.print("[red]Error:[/red] Expected exactly one argument.")
         console.print("Usage:   [bold]python fly-in.py <path/to/map>[/bold]")
-   
+
         sys.exit(1)
     parser = Parser(sys.argv[1])
     main_map = Map(**parser.main_parser())
@@ -192,7 +227,7 @@ if __name__ == "__main__":
     try:
         main()
     except ParserError as e:
-            Errors.display_error(e, sys.argv[1])
+        Errors.display_error(e, sys.argv[1])
     except Grapherror as e:
         Errors.display_error(e, sys.argv[1])
     except Exception as e:
