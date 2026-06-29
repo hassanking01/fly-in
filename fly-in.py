@@ -21,6 +21,7 @@ class SimulationWindow(arcade.View):
         self.zoom = 100
         self.cx = self.width // 2 - ((self.main_map.end.x * self.zoom) // 2)
         self.cy = self.height // 2
+        self.camera.position = (self.cx, self.cy)
         self.hub_radius = 30
         self.puase = True
         self.background = arcade.load_texture("./background.jpg")
@@ -28,10 +29,10 @@ class SimulationWindow(arcade.View):
         self.turns = 0
         self.is_sim_end = False
         self.current_zoom = 1.0
-
+        self.debug = False
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
         self.current_zoom += scroll_y * 0.1
-        self.current_zoom = max(1.0, min(5.0, self.current_zoom))
+        self.current_zoom = max(0.6, min(5.0, self.current_zoom))
         self.camera.zoom = self.current_zoom
 
     def setup(self) -> None:
@@ -86,7 +87,6 @@ class SimulationWindow(arcade.View):
         self.clear()
         wrct = arcade.rect.XYWH(self.width // 2, self.height // 2, 1920, 1080)
         arcade.draw_texture_rect(self.background, wrct)
-        # self.camera.use()
         arcade.draw_text(
             f"Turns: {self.turns}",
             0,
@@ -150,6 +150,7 @@ class SimulationWindow(arcade.View):
             self.main_map.reset()
             self.is_sim_end = False
             self.turns = 0
+            self.debug = True
 
         if symbol == arcade.key.RIGHT:
             if not self.on_next_turn:

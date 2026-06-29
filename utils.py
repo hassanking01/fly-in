@@ -21,18 +21,16 @@ class Hub:
         self.x = x
         self.y = y
         self.connections: Dict[Hub, dict[str,int]] = {}
-        self.pos = (x, y)
         self.name = name
         self.type = zone
         self.color: tuple[int, int, int] = colors.get(
             color,
-            (int(0), int(0), int(255))
+            (0, 0, 255)
         )
         self.max_drones = max_drones
         self.current_drones_count = 0
         self.cost = float("inf")
         self.is_goal_hub = False
-        self.on_road = 0
 
     def __lt__(self, other) -> bool:
         return self.cost < other.cost
@@ -75,9 +73,10 @@ class Map:
             drone.next = next
 
     def reset(self) -> None:
-        for key in self.graph:
-            key.current_drones_count = 0
-            key.on_road = 0
+        for hub in self.graph:
+            hub.current_drones_count = 0
+            for connection in hub.connections:
+                hub.connections[connection]["on_road"] = 0
         self.start.current_drones_count = self.nb_drones
         self.set_drones()
 
@@ -131,9 +130,8 @@ class Map:
             ) -> None:
 
         for hub in self.graph:
-            x, y = hub.pos
-            hub.x = x * zoom + cx
-            hub.y = y * zoom + cy
+            hub.x = hub.x * zoom + cx
+            hub.y = hub.y * zoom + cy
 
     def compute_costs(self) -> None:
         heap: list[Hub] = [self.end]
