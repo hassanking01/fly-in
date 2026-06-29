@@ -2,11 +2,10 @@
 # WARNING: This map is designed to be extremely challenging and may not be solvable
 # by most algorithms. It's intended as a stress test and research challenge.
 # The goal is NOT to validate this map but to push algorithmic limits.
-
 nb_drones: 25
 
 # === LAYER 0: The Nightmare Begins ===
-start_hub: start 0 0 [zone=restricted color=green max_drones=25]
+start_hub: start -1 2 [zone=normal color=green max_drones=25]
 
 # Single-file entry gates (extreme bottleneck)
 hub: gate_hell1 2 0 [zone=normal  color=blue max_drones=1]

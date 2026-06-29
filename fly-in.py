@@ -70,7 +70,7 @@ class SimulationWindow(arcade.View):
                     if drone.next:
                         drone.finished = False
                         continue
-                    next = drone.find_next()
+                    next = drone.find_next(self.turns)
                     if next:
                         next.current_drones_count += 1
                         next.connections[drone.current]["on_road"] += 1
@@ -116,15 +116,15 @@ class SimulationWindow(arcade.View):
                     visited.add(key)
             for hub in self.main_map.graph:
                 arcade.draw_circle_filled(
-                    hub.x, hub.y, self.hub_radius + 4, arcade.csscolor.DARK_GRAY
+                    hub.x, hub.y, self.hub_radius + 4, arcade.csscolor.DARK_GRAY, num_segments=100
                 )
-                arcade.draw_circle_filled(hub.x, hub.y, self.hub_radius, hub.color)
+                arcade.draw_circle_filled(hub.x, hub.y, self.hub_radius, hub.color, num_segments=100)
                 angle = math.radians(50)
 
                 dot_x = hub.x + (self.hub_radius + 4) * math.cos(angle)
                 dot_y = hub.y + (self.hub_radius + 4) * math.sin(angle)
-                arcade.draw_circle_filled(dot_x, dot_y, 13, arcade.csscolor.DARK_GRAY)
-                arcade.draw_circle_filled(dot_x, dot_y, 10, arcade.csscolor.ROYAL_BLUE)
+                arcade.draw_circle_filled(dot_x, dot_y, 13, arcade.csscolor.DARK_GRAY,  num_segments=100)
+                arcade.draw_circle_filled(dot_x, dot_y, 10, arcade.csscolor.ROYAL_BLUE,  num_segments=100)
                 arcade.draw_text(
                     f"{hub.type[0].upper()}",
                     dot_x - 1,
@@ -136,7 +136,7 @@ class SimulationWindow(arcade.View):
                     anchor_y="center",
                 )
             for drone in self.main_map.drones:
-                arcade.draw_circle_filled(drone.x, drone.y, 10, drone.color)
+                arcade.draw_circle_filled(drone.x, drone.y, 10, drone.color,  num_segments=100)
 
     def on_mouse_drag(
         self, x: int, y: int, dx: int, dy: int, buttons: int, modifiers: int

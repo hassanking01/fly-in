@@ -217,7 +217,6 @@ class Parser:
             metadata = metadata.strip("[]").strip()
         is_metadata_good = True
         if metadata:
-
             if (
                 "=" not in metadata
                 or metadata[0] == "="
@@ -267,7 +266,7 @@ class Parser:
                 line = line.strip()
                 if line.startswith("#") or not line:
                     continue
-                line.lower()
+                line = line.lower()
                 if (
                         ":" not in line
                         or line.count(":") != 1
@@ -298,7 +297,7 @@ class Parser:
                     if key == "nb_drones":
                         raise ParserError(
                             line_number,
-                            f"nb_drones must be a positive integer, got '{value}'"
+                            f"duplicate nb_drones found"
                         )
                 if key not in self.required:
                     raise ParserError(
@@ -355,7 +354,6 @@ class Parser:
                     except ConnectionMetadataError as e:
                         raise ParserError(
                             line_number,
-                            f"ParserError Error in Line",
                             f"invalid connection metadata — {str(e)}"
                         )
                     if src_name not in self.zone_names:
@@ -396,6 +394,12 @@ class Parser:
                         next_start + 1,
                         "the map file is empty"
                 )
+            for key in self.is_registered:
+                if not self.is_registered[key]:
+                    raise ParserError(
+                        next_start,
+                        f"'{key}' is missing from the map"
+                    )
             return {
                 "graph": self.graph,
                 "start": self.start_hub,

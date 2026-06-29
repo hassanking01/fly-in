@@ -62,7 +62,7 @@ class Map:
             drone.current = self.start
             drone.x = drone.current.x
             drone.y = drone.current.y
-            next = drone.find_next()
+            next = drone.find_next(0)
             drone.can_move = False
             drone.finished = True
             if next:
@@ -165,7 +165,7 @@ class Drone:
         self.graph: Dict[Hub, List[Hub]] = {}
         self.end_hub = None
 
-    def find_next(self) -> Optional[Hub]:
+    def find_next(self, turns: int) -> Optional[Hub]:
         if not self.current:
             return None
         if self.current.is_goal_hub:
@@ -177,7 +177,8 @@ class Drone:
         for hub in hub_list:
             if hub.cost == min_cost:
                 same_cost += [hub]
-        random.shuffle(same_cost)
+        if turns % 2:
+            same_cost = same_cost[::-1]
         for hub in same_cost:
             if (
                 hub.cost <= min_cost + 1
