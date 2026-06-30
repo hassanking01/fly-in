@@ -21,8 +21,11 @@ class SimulationWindow(arcade.View):
         self.on_next_turn = False
         self.console = Console()
         self.zoom = 100
-        self.cx = self.width // 2 - ((self.main_map.end.x * self.zoom) // 2)
-        self.cy = self.height // 2
+        self.cx = int(
+            self.width // 2 - ((self.main_map.end.x * self.zoom) // 2)
+        )
+        self.delivered: set[Drone] = set()
+        self.cy = int(self.height // 2)
         self.camera.position = (self.cx, self.cy)
         self.hub_radius = 30
         self.puase = True
@@ -33,7 +36,13 @@ class SimulationWindow(arcade.View):
         self.current_zoom = 1.0
         self.debug = False
 
-    def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
+    def on_mouse_scroll(
+            self,
+            x: int,
+            y: int,
+            scroll_x: int,
+            scroll_y: int
+            ) -> None:
         self.current_zoom += scroll_y * 0.1
         self.current_zoom = max(0.6, min(5.0, self.current_zoom))
         self.camera.zoom = self.current_zoom
@@ -41,9 +50,11 @@ class SimulationWindow(arcade.View):
     def setup(self) -> None:
         self.main_map.set_drones()
 
-    def print_turns(self, moved_drones: list[Drone]):
+    def print_turns(self, moved_drones: list[Drone]) -> None:
         line = "[cyan]"
         for drone in moved_drones:
+            if not drone.next or not drone.current:
+                continue
             if drone.next.type == "restricted" and drone.first_half:
                 line += f"{drone.name}-{drone.current.name}-{drone.next.name} "
                 continue
@@ -71,12 +82,17 @@ class SimulationWindow(arcade.View):
                 self.turns += 1
                 self.print_turns(moved_drones[::-1])
                 for drone in self.main_map.drones:
+                    if drone.current and drone.current.is_goal_hub:
+                        if drone not in self.delivered:
+                            self.delivered.add(drone)
                     if drone.next:
                         drone.finished = False
                         continue
                     next = drone.find_next(self.turns)
                     if next:
                         next.current_drones_count += 1
+                        if not drone.current:
+                            continue
                         next.connections[drone.current]["on_road"] += 1
                         if drone.current:
                             drone.current.current_drones_count -= 1
@@ -86,22 +102,49 @@ class SimulationWindow(arcade.View):
                 if self.on_next_turn:
                     self.puase = True
                 self.is_sim_end = all(
-                    drone.current.is_goal_hub for drone in self.main_map.drones
+                    drone.current.is_goal_hub
+                    for drone in self.main_map.drones if drone.current
                 )
 
     def on_draw(self) -> None:
         self.clear()
         wrct = arcade.rect.XYWH(self.width // 2, self.height // 2, 1920, 1080)
         arcade.draw_texture_rect(self.background, wrct)
+        visited = set()
+        rect = arcade.rect.XYWH(self.width // 2, self.height - 80, 1900, 100)
+        arcade.draw_rect_filled(rect, (106, 90, 205, 200))
+        rect = arcade.rect.XYWH(self.width // 2, self.height - 80, 1890, 90)
+        arcade.draw_rect_filled(rect, (0, 0, 128, 255))
         arcade.draw_text(
-            f"Turns: {self.turns}",
-            0,
-            0,
+            f"TURNS: {self.turns}",
+            self.width // 2,
+            self.height - 78,
+            arcade.csscolor.SALMON,
+            font_size=35,
+            font_name="Black Ops One",
+            anchor_x="center",
+            anchor_y="center"
+        )
+        arcade.draw_text(
+            f"DELIVERED: {len(self.delivered)} / {self.main_map.nb_drones}",
+            self.width - 200,
+            self.height - 78,
             arcade.csscolor.SALMON,
             font_size=20,
             font_name="Black Ops One",
+            anchor_x="center",
+            anchor_y="center"
         )
-        visited = set()
+        arcade.draw_text(
+            f"STATUS: {"puase" if self.puase else "playing"}",
+            150,
+            self.height - 78,
+            arcade.csscolor.SALMON,
+            font_size=20,
+            font_name="Black Ops One",
+            anchor_x="center",
+            anchor_y="center"
+        )
         with self.camera.activate():
             for start in self.main_map.graph:
                 for end in self.main_map.graph[start]:
@@ -129,11 +172,7 @@ class SimulationWindow(arcade.View):
                     num_segments=100,
                 )
                 arcade.draw_circle_filled(
-                    hub.x,
-                    hub.y,
-                    self.hub_radius,
-                    hub.color,
-                    num_segments=100
+                    hub.x, hub.y, self.hub_radius, hub.color, num_segments=100
                 )
                 angle = math.radians(50)
 

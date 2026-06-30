@@ -73,15 +73,19 @@ class Errors:
                             filepath,
                             line_numbers=True,
                             highlight_lines={line_number},
-                            line_range=(max(1, line_number - 4), line_number + 4),
+                            line_range=(
+                                max(1, line_number - 4),
+                                line_number + 4
+                            ),
                             theme="ansi_dark",
                         ),
-                        title=f"[bold red]Traceback[/bold red]",
+                        title="[bold red]Traceback[/bold red]",
                         border_style="red",
                     )
                 )
                 console.print(
-                    f"[bold red]{title} [{line_number}]:[/bold red]\n[red]{escape(error_msg)}[/red]"
+                    f"[bold red]{title} [{line_number}]:"
+                    f"[/bold red]\n[red]{escape(error_msg)}[/red]"
                 )
                 console.print()
         else:

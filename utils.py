@@ -29,10 +29,10 @@ class Hub:
         self.cost = float("inf")
         self.is_goal_hub = False
 
-    def __lt__(self, other) -> bool:
+    def __lt__(self, other: "Hub") -> bool:
         return self.cost < other.cost
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.name
 
 
@@ -75,7 +75,7 @@ class Map:
         self.start.current_drones_count = self.nb_drones
         self.set_drones()
 
-    def is_end_have_path(self):
+    def is_end_have_path(self) -> None:
         queue: list[Hub] = [self.start]
         visited: set[Hub] = set()
         while queue:
@@ -93,7 +93,7 @@ class Map:
                 f"No valid path exists from '{self.start}' to '{self.end}'.",
             )
 
-    def check_disconnected_graph(self):
+    def check_disconnected_graph(self) -> None:
         queue: list[Hub] = [self.start]
         visited: set[Hub] = set([self.end])
         while queue:
@@ -113,8 +113,8 @@ class Map:
                             continue
                         raise Grapherror(
                             index,
-                            f"hub '{hub.name}' at "
-                            f"({hub.x}, {hub.y}) is unreachable — "
+                            f"hub '{hub.name}' at ({hub.x}, {hub.y})"
+                            " is unreachable — "
                             f"every hub must be connected to the graph",
                         )
 

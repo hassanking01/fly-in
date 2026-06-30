@@ -13,21 +13,22 @@ class Parser:
 
     def __init__(self, path: str) -> None:
         self.map_path = path
-        self.zone_names = set()
-        self.coordinates = set()
+        self.zone_names: set[str] = set()
+        self.coordinates: set[tuple[int, int]] = set()
         self.graph: Dict[Hub, list[Hub]] = {}
         self.Hubs: dict[str, Hub] = {}
-        self.connections = set()
+        self.connections: set[tuple[str, ...]] = set()
         self.is_registered = {"start_hub": False, "end_hub": False}
-        self.start_hub = None
-        self.end_hub = None
+        self.start_hub: Optional[Hub] = None
+        self.end_hub: Optional[Hub] = None
         self.nb_drones = 0
         self.required = {
             "start_hub",
             "end_hub",
             "hub",
             "connection",
-            "nb_drones"}
+            "nb_drones"
+        }
 
     def get_hub_details(
         self, file_line: str, is_start_or_end: bool, nb_drones: int
@@ -115,14 +116,14 @@ class Parser:
                         cased_value = int(value)
                     except ValueError:
                         raise HubMetadataError(
-                            f"invalid max_drones — "
-                            "max_drones must be valid int got '{value}'\n"
+                            "invalid max_drones"
+                            f" — max_drones must be valid int got '{value}'\n"
                             f"metadata format {metadata_format_error}"
                         )
                     if cased_value <= 0:
                         raise HubMetadataError(
-                            "max_drones must be "
-                            f"a positive integer, got '{cased_value}'"
+                            "max_drones must be a positive integer,"
+                            f" got '{cased_value}'"
                         )
 
                 if key not in keys:
@@ -147,7 +148,8 @@ class Parser:
                     )
                 else:
                     HubMetadataError(
-                        f"unknown key '{line}' — {metadata_format_error}"
+                        f"unknown key '{line}' "
+                        f"— {metadata_format_error}"
                     )
         if "zone" not in parsed_metadata:
             parsed_metadata["zone"] = "normal"
@@ -165,17 +167,27 @@ class Parser:
         result = {"name": name, "x": x, "y": y, **metadata_result}
         return result
 
-    def cast_coordinates(self, coordinate_str, axis, name):
+    def cast_coordinates(
+            self,
+            coordinate_str: str,
+            axis: str,
+            name: str
+            ) -> int:
         try:
             coordinate_int = int(coordinate_str)
         except ValueError:
             raise HubFormatError(
-                f"invalid x coordinate for hub '{name}',"
+                f"invalid {axis} coordinate for hub '{name}',"
                 f" expected int, got '{coordinate_str}'"
             )
         return coordinate_int
 
-    def validate_required_data(self, name, str_x, str_y):
+    def validate_required_data(
+            self,
+            name: str,
+            str_x: str,
+            str_y: str
+            ) -> tuple[str, int, int]:
         x = self.cast_coordinates(str_x, "X", name)
         y = self.cast_coordinates(str_y, "Y", name)
         if (x, y) in self.coordinates:
@@ -184,12 +196,12 @@ class Parser:
                 f"({x}, {y}) with an existing zone"
             )
         if name in self.zone_names:
-            raise HubFormatError(f"duplicate zone name '{name}")
+            raise ParserError(f"duplicate zone name '{name}")
         if "-" in name:
-            raise HubFormatError(f"zone name '{name}' cannot contain '-'")
-        return name, x, y
+            raise ParserError(f"zone name '{name}' cannot contain '-'")
+        return (name, x, y)
 
-    def get_connection_details(self, edg: str) -> tuple[str, str, str, int]:
+    def get_connection_details(self, edg: str) -> tuple[str, str, int]:
         edg = " ".join(edg.split())
         data = edg.split(" ", 1)
         if "-" not in data[0]:
@@ -216,14 +228,14 @@ class Parser:
             metadata = data[1]
             if metadata[0] != "[":
                 raise ConnectionMetadataError(
-                    "invalid metadata "
-                    f"opening expected '[', got '{metadata[0]}'"
+                    "invalid metadata opening expected "
+                    f"'[', got '{metadata[0]}'"
                 )
 
             if metadata[-1] != "]":
                 raise ConnectionMetadataError(
-                    "invalid metadata "
-                    f"closing expected ']', got '{metadata[-1]}'"
+                    "invalid metadata closing expected "
+                    f"']', got '{metadata[-1]}'"
                 )
 
             metadata = metadata.strip("[]").strip()
@@ -248,22 +260,22 @@ class Parser:
                     is_metadata_good = False
                 if value <= 0 and key == "max_link_capacity":
                     raise ConnectionMetadataError(
-                        "max_link_capacity must "
-                        f"be a positive integer, got '{str_value}'"
+                        "max_link_capacity must be a positive integer,"
+                        f" got '{str_value}'"
                     )
             if key != "max_link_capacity":
                 is_metadata_good = False
         if not metadata or not is_metadata_good:
             raise ConnectionMetadataError(
-                "expected metadata in the"
-                " form [max_link_capacity=<value: int>]"
+                "expected metadata in the "
+                "form [max_link_capacity=<value: int>]"
             )
         return (src, dest, value)
 
     def get_key_value(self, sep: str, line: str) -> tuple[str, ...]:
         return tuple(map(lambda x: x.strip(), line.split(sep)))
 
-    def get_nb_drones(self, value: str):
+    def get_nb_drones(self, value: str) -> None:
         try:
             self.nb_drones = int(value)
             valid = self.nb_drones > 0
@@ -292,16 +304,16 @@ class Parser:
                     if key != "nb_drones":
                         raise ParserError(
                             line_number,
-                            "first line must be"
-                            f" 'nb_drones: <number>', got '{line}'",
+                            "first line must be 'nb_drones: <number>',"
+                            f" got '{line}'",
                         )
                     try:
                         self.get_nb_drones(value)
                     except ParserError:
                         raise ParserError(
                             line_number,
-                            "nb_drones must be a"
-                            f" positive integer, got '{value}'",
+                            "nb_drones must be a positive integer,"
+                            f" got '{value}'",
                         )
                 else:
                     if key == "nb_drones":
@@ -312,7 +324,8 @@ class Parser:
                 if key not in self.required:
                     raise ParserError(
                         line_number,
-                        f"unknown keyword '{key}', expected one of [start_hub, end_hub, hub, connection]",
+                        f"unknown keyword '{key}', expected one of"
+                        " [start_hub, end_hub, hub, connection]",
                     )
 
                 if key == "hub" or key == "start_hub" or key == "end_hub":
@@ -321,10 +334,15 @@ class Parser:
                             if self.is_registered[key]:
                                 raise ParserError(
                                     line_number,
-                                    f"duplicated [{key}] Only one '{key}' is allowed per map",
+                                    f"duplicated [{key}] Only one"
+                                    f" '{key}' is allowed per map",
                                 )
                             self.is_registered[key] = True
-                            hub_dict = self.get_hub_details(value, True, self.nb_drones)
+                            hub_dict = self.get_hub_details(
+                                value,
+                                True,
+                                self.nb_drones
+                            )
                         else:
                             hub_dict = self.get_hub_details(value, False, 1)
                     except HubFormatError as e:
@@ -347,7 +365,9 @@ class Parser:
                         self.end_hub.is_goal_hub = True
                 elif key == "connection":
                     try:
-                        src_name, dest_name, mlc = self.get_connection_details(value)
+                        src_name, dest_name, mlc = self.get_connection_details(
+                            value
+                        )
                     except ConnectionEdgError as e:
                         raise ParserError(
                             line_number, f"invalid connection edge — {str(e)}"
@@ -360,13 +380,15 @@ class Parser:
                         raise ParserError(
                             line_number,
                             f"unknown zone '{src_name}' — "
-                            f"zone must be defined before being used in a connection",
+                            f"zone must be defined before being"
+                            " used in a connection",
                         )
                     if dest_name not in self.zone_names:
                         raise ParserError(
                             line_number,
                             f"unknown zone '{dest_name}' — "
-                            f"zone must be defined before being used in a connection",
+                            f"zone must be defined before "
+                            "being used in a connection",
                         )
                     connection = tuple(sorted((src_name, dest_name)))
                     if connection in self.connections:
@@ -378,8 +400,14 @@ class Parser:
                     self.connections.add(connection)
                     src = self.Hubs[src_name]
                     dest = self.Hubs[dest_name]
-                    src.connections[dest] = {"max_link_capacity": mlc, "on_road": 0}
-                    dest.connections[src] = {"max_link_capacity": mlc, "on_road": 0}
+                    src.connections[dest] = {
+                        "max_link_capacity": mlc,
+                        "on_road": 0
+                    }
+                    dest.connections[src] = {
+                        "max_link_capacity": mlc,
+                        "on_road": 0
+                    }
                     self.graph[src] += [dest]
                     self.graph[dest] += [src]
                 next_start = line_number
