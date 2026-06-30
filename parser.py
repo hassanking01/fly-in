@@ -136,6 +136,11 @@ class Parser:
                         f"duplicate key '{key}' —"
                         " each key can only appear once"
                     )
+                if key == "color" and not value.isalpha():
+                    raise HubMetadataError(
+                        f"invalid color '{value}' — color "
+                        "names must contain only alphabetic characters"
+                    )
                 parsed_metadata.update(
                     {key: value if key != "max_drones" else cased_value}
                 )
@@ -374,7 +379,8 @@ class Parser:
                         )
                     except ConnectionMetadataError as e:
                         raise ParserError(
-                            line_number, f"invalid connection metadata — {str(e)}"
+                            line_number,
+                            f"invalid connection metadata — {str(e)}"
                         )
                     if src_name not in self.zone_names:
                         raise ParserError(
@@ -415,7 +421,10 @@ class Parser:
                 raise ParserError(next_start + 1, "the map file is empty")
             for key in self.is_registered:
                 if not self.is_registered[key]:
-                    raise ParserError(next_start, f"'{key}' is missing from the map")
+                    raise ParserError(
+                        next_start,
+                        f"'{key}' is missing from the map"
+                    )
             return {
                 "graph": self.graph,
                 "start": self.start_hub,

@@ -20,21 +20,22 @@ class SimulationWindow(arcade.View):
         super().__init__()
         self.on_next_turn = False
         self.console = Console()
-        self.zoom = 100
-        self.cx = int(
-            self.width // 2 - ((self.main_map.end.x * self.zoom) // 2)
-        )
         self.delivered: set[Drone] = set()
+        self.cx = int(
+            self.width // 2 - ((self.main_map.end.x * 100) // 2)
+        )
         self.cy = int(self.height // 2)
         self.camera.position = (self.cx, self.cy)
         self.hub_radius = 30
         self.puase = True
         self.background = arcade.load_texture("./background.jpg")
-        self.main_map.scale_and_center_hubs(self.zoom, self.cx, self.cy)
+        self.main_map.scale_and_center_hubs(100, self.cx, self.cy)
+        self.zoom = 1.0
         self.turns = 0
         self.is_sim_end = False
-        self.current_zoom = 1.0
+        # self.current_zoom = 1.0
         self.debug = False
+        arcade.load_font("Monoton-Regular.ttf")
 
     def on_mouse_scroll(
             self,
@@ -43,9 +44,9 @@ class SimulationWindow(arcade.View):
             scroll_x: int,
             scroll_y: int
             ) -> None:
-        self.current_zoom += scroll_y * 0.1
-        self.current_zoom = max(0.6, min(5.0, self.current_zoom))
-        self.camera.zoom = self.current_zoom
+        self.zoom += scroll_y * 0.1
+        self.zoom = max(0.6, min(5.0, self.zoom))
+        self.camera.zoom = self.zoom
 
     def setup(self) -> None:
         self.main_map.set_drones()
@@ -105,6 +106,8 @@ class SimulationWindow(arcade.View):
                     drone.current.is_goal_hub
                     for drone in self.main_map.drones if drone.current
                 )
+                if self.is_sim_end:
+                    self.puase = True
 
     def on_draw(self) -> None:
         self.clear()
@@ -114,34 +117,34 @@ class SimulationWindow(arcade.View):
         rect = arcade.rect.XYWH(self.width // 2, self.height - 80, 1900, 100)
         arcade.draw_rect_filled(rect, (106, 90, 205, 200))
         rect = arcade.rect.XYWH(self.width // 2, self.height - 80, 1890, 90)
-        arcade.draw_rect_filled(rect, (0, 0, 128, 255))
+        arcade.draw_rect_filled(rect, (159, 182, 205, 100))
         arcade.draw_text(
-            f"TURNS: {self.turns}",
+            f"TURNS:   {self.turns}",
             self.width // 2,
             self.height - 78,
-            arcade.csscolor.SALMON,
+            arcade.csscolor.LIGHT_GOLDENROD_YELLOW,
             font_size=35,
-            font_name="Black Ops One",
+            font_name="Monoton",
             anchor_x="center",
             anchor_y="center"
         )
         arcade.draw_text(
-            f"DELIVERED: {len(self.delivered)} / {self.main_map.nb_drones}",
-            self.width - 200,
+            f"DELIVERED:   {len(self.delivered)} / {self.main_map.nb_drones}",
+            self.width - 300,
             self.height - 78,
-            arcade.csscolor.SALMON,
+            arcade.csscolor.LIGHT_GOLDENROD_YELLOW,
             font_size=20,
-            font_name="Black Ops One",
+            font_name="Monoton",
             anchor_x="center",
             anchor_y="center"
         )
         arcade.draw_text(
-            f"STATUS: {"puase" if self.puase else "playing"}",
-            150,
+            f"STATUS:   {'PUASE' if self.puase else 'PLAYING'}",
+            300,
             self.height - 78,
-            arcade.csscolor.SALMON,
+            arcade.csscolor.LIGHT_GOLDENROD_YELLOW,
             font_size=20,
-            font_name="Black Ops One",
+            font_name="Monoton",
             anchor_x="center",
             anchor_y="center"
         )
@@ -220,13 +223,14 @@ class SimulationWindow(arcade.View):
             self.is_sim_end = False
             self.turns = 0
             self.debug = True
+            self.delivered = set()
 
         if symbol == arcade.key.RIGHT:
             if not self.on_next_turn:
                 self.on_next_turn = True
             if self.puase:
                 self.puase = False
-        if symbol == arcade.key.SPACE:
+        if symbol == arcade.key.SPACE and not self.is_sim_end:
             if self.on_next_turn:
                 self.on_next_turn = False
             if self.puase:
