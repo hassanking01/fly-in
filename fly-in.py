@@ -24,6 +24,7 @@ class SimulationWindow(arcade.View):
         self.cx = int(
             self.width // 2 - ((self.main_map.end.x * self.zoom) // 2)
         )
+        self.delivered: set[Drone] = set()
         self.cy = int(self.height // 2)
         self.camera.position = (self.cx, self.cy)
         self.hub_radius = 30
@@ -81,6 +82,9 @@ class SimulationWindow(arcade.View):
                 self.turns += 1
                 self.print_turns(moved_drones[::-1])
                 for drone in self.main_map.drones:
+                    if drone.current and drone.current.is_goal_hub:
+                        if drone not in self.delivered:
+                            self.delivered.add(drone)
                     if drone.next:
                         drone.finished = False
                         continue
@@ -106,15 +110,41 @@ class SimulationWindow(arcade.View):
         self.clear()
         wrct = arcade.rect.XYWH(self.width // 2, self.height // 2, 1920, 1080)
         arcade.draw_texture_rect(self.background, wrct)
+        visited = set()
+        rect = arcade.rect.XYWH(self.width // 2, self.height - 80, 1900, 100)
+        arcade.draw_rect_filled(rect, (106, 90, 205, 200))
+        rect = arcade.rect.XYWH(self.width // 2, self.height - 80, 1890, 90)
+        arcade.draw_rect_filled(rect, (0, 0, 128, 255))
         arcade.draw_text(
-            f"Turns: {self.turns}",
-            0,
-            0,
+            f"TURNS: {self.turns}",
+            self.width // 2,
+            self.height - 78,
+            arcade.csscolor.SALMON,
+            font_size=35,
+            font_name="Black Ops One",
+            anchor_x="center",
+            anchor_y="center"
+        )
+        arcade.draw_text(
+            f"DELIVERED: {len(self.delivered)} / {self.main_map.nb_drones}",
+            self.width - 200,
+            self.height - 78,
             arcade.csscolor.SALMON,
             font_size=20,
             font_name="Black Ops One",
+            anchor_x="center",
+            anchor_y="center"
         )
-        visited = set()
+        arcade.draw_text(
+            f"STATUS: {"puase" if self.puase else "playing"}",
+            150,
+            self.height - 78,
+            arcade.csscolor.SALMON,
+            font_size=20,
+            font_name="Black Ops One",
+            anchor_x="center",
+            anchor_y="center"
+        )
         with self.camera.activate():
             for start in self.main_map.graph:
                 for end in self.main_map.graph[start]:
