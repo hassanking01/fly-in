@@ -9,24 +9,21 @@ import sys
 class Hub:
 
     def __init__(
-            self,
-            name: str,
-            x: int,
-            y: int,
-            color: str,
-            max_drones: int = 1,
-            zone: str = "normal"
-            ) -> None:
+        self,
+        name: str,
+        x: int,
+        y: int,
+        color: str,
+        max_drones: int = 1,
+        zone: str = "normal",
+    ) -> None:
 
         self.x = x
         self.y = y
-        self.connections: Dict[Hub, dict[str,int]] = {}
+        self.connections: Dict[Hub, dict[str, int]] = {}
         self.name = name
         self.type = zone
-        self.color: tuple[int, int, int] = colors.get(
-            color,
-            (0, 0, 255)
-        )
+        self.color: tuple[int, int, int] = colors.get(color, (0, 0, 255))
         self.max_drones = max_drones
         self.current_drones_count = 0
         self.cost = float("inf")
@@ -38,14 +35,11 @@ class Hub:
     def __repr__(self):
         return self.name
 
+
 class Map:
     def __init__(
-            self,
-            graph: Dict[Hub, List[Hub]],
-            start: Hub,
-            end: Hub,
-            nb_drones: int
-            ) -> None:
+        self, graph: Dict[Hub, List[Hub]], start: Hub, end: Hub, nb_drones: int
+    ) -> None:
         self.graph = graph
         self.start = start
         self.end = end
@@ -56,6 +50,7 @@ class Map:
         self.is_end_have_path()
         self.check_disconnected_graph()
         self.compute_costs()
+
     def set_drones(self) -> None:
         for drone in self.drones:
             drone.graph = self.graph
@@ -95,7 +90,7 @@ class Map:
         if self.end not in visited:
             raise Grapherror(
                 0,
-                f"No valid path exists from '{self.start}' to '{self.end}'.",                
+                f"No valid path exists from '{self.start}' to '{self.end}'.",
             )
 
     def check_disconnected_graph(self):
@@ -112,22 +107,23 @@ class Map:
                 queue += [neighbor]
         for hub in self.graph:
             if hub not in visited:
-                with open(sys.argv[1], 'r') as file:
-                    for index , line in enumerate(file, start=1):
+                with open(sys.argv[1], "r") as file:
+                    for index, line in enumerate(file, start=1):
                         if hub.name not in line:
                             continue
                         raise Grapherror(
                             index,
-                            f"hub '{hub.name}' at ({hub.x}, {hub.y}) is unreachable — "
-                            f"every hub must be connected to the graph"
+                            f"hub '{hub.name}' at "
+                            f"({hub.x}, {hub.y}) is unreachable — "
+                            f"every hub must be connected to the graph",
                         )
 
     def scale_and_center_hubs(
-            self,
-            zoom: int,
-            cx: int,
-            cy: int,
-            ) -> None:
+        self,
+        zoom: int,
+        cx: int,
+        cy: int,
+    ) -> None:
 
         for hub in self.graph:
             hub.x = hub.x * zoom + cx
@@ -183,16 +179,18 @@ class Drone:
             if (
                 hub.cost <= min_cost + 1
                 and hub.current_drones_count < hub.max_drones
-                and hub.connections[self.current]["on_road"] < self.current.connections[hub]["max_link_capacity"]
-                    ):
+                and hub.connections[self.current]["on_road"]
+                < self.current.connections[hub]["max_link_capacity"]
+            ):
                 return hub
             hub_list.remove(hub)
         for hub in hub_list:
             if (
                 hub.cost <= min_cost + 1
                 and hub.current_drones_count < hub.max_drones
-                and hub.connections[self.current]["on_road"] < self.current.connections[hub]["max_link_capacity"]
-                    ):
+                and hub.connections[self.current]["on_road"]
+                < self.current.connections[hub]["max_link_capacity"]
+            ):
                 return hub
             if hub.cost > min_cost + 1:
                 break

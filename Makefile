@@ -1,4 +1,4 @@
-FILE = "./maps/challenger/01_the_impossible_dream.txt"
+FILE = "./maps/easy/01_linear_path.txt"
 
 run:
 	python3 fly-in.py $(FILE)
