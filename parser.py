@@ -201,9 +201,9 @@ class Parser:
                 f"({x}, {y}) with an existing zone"
             )
         if name in self.zone_names:
-            raise ParserError(f"duplicate zone name '{name}")
+            raise HubFormatError(f"duplicate zone name '{name}")
         if "-" in name:
-            raise ParserError(f"zone name '{name}' cannot contain '-'")
+            raise HubFormatError(f"zone name '{name}' cannot contain '-'")
         return (name, x, y)
 
     def get_connection_details(self, edg: str) -> tuple[str, str, int]:

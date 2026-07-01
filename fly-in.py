@@ -28,14 +28,12 @@ class SimulationWindow(arcade.View):
         self.camera.position = (self.cx, self.cy)
         self.hub_radius = 30
         self.puase = True
-        self.background = arcade.load_texture("./background.jpg")
         self.main_map.scale_and_center_hubs(100, self.cx, self.cy)
         self.zoom = 1.0
         self.turns = 0
         self.is_sim_end = False
-        # self.current_zoom = 1.0
-        self.debug = False
         arcade.load_font("Monoton-Regular.ttf")
+        self.progress = 0
 
     def on_mouse_scroll(
             self,
@@ -63,6 +61,8 @@ class SimulationWindow(arcade.View):
                 line += f"{drone.name}-{drone.next.name} "
             drone.next = None
         line += "[/cyan]"
+        # for hub in self.main_map.graph:
+        #     line += f"{hub}\n"
         panel = Panel(
             line,
             title=f"[bold yellow]TURN {self.turns}[/bold yellow]",
@@ -71,6 +71,8 @@ class SimulationWindow(arcade.View):
         self.console.print(panel)
 
     def on_update(self, delta_time: float) -> None:
+        self.progress += delta_time
+        self.progress %= 360 
         if not self.puase and not self.is_sim_end:
             all_moved: list[bool] = []
             moved_drones: list[Drone] = []
@@ -111,9 +113,14 @@ class SimulationWindow(arcade.View):
 
     def on_draw(self) -> None:
         self.clear()
-        wrct = arcade.rect.XYWH(self.width // 2, self.height // 2, 1920, 1080)
-        arcade.draw_texture_rect(self.background, wrct)
         visited = set()
+        cx = self.width 
+        cy = self.height
+        color = (240,198, 162, 80)
+        for i in range(0, self.height * 2, 60):
+            arcade.draw_line( 0 , i , cx , i, color)
+            arcade.draw_line(i , 0, i ,  cy, color)
+
         rect = arcade.rect.XYWH(self.width // 2, self.height - 80, 1900, 100)
         arcade.draw_rect_filled(rect, (106, 90, 205, 200))
         rect = arcade.rect.XYWH(self.width // 2, self.height - 80, 1890, 90)
@@ -139,7 +146,7 @@ class SimulationWindow(arcade.View):
             anchor_y="center"
         )
         arcade.draw_text(
-            f"STATUS:   {'PUASE' if self.puase else 'PLAYING'}",
+            f"STATUS:   {'PAUSE' if self.puase else 'PLAYING'}",
             300,
             self.height - 78,
             arcade.csscolor.LIGHT_GOLDENROD_YELLOW,
@@ -166,12 +173,14 @@ class SimulationWindow(arcade.View):
                         5,
                     )
                     visited.add(key)
+            new_r = math.sin(self.progress)
             for hub in self.main_map.graph:
+                r, g, b = hub.color
                 arcade.draw_circle_filled(
                     hub.x,
                     hub.y,
-                    self.hub_radius + 4,
-                    arcade.csscolor.DARK_GRAY,
+                    (self.hub_radius + 5) + (new_r * 5),
+                    (r, g, b, 100),
                     num_segments=100,
                 )
                 arcade.draw_circle_filled(
@@ -181,11 +190,12 @@ class SimulationWindow(arcade.View):
 
                 dot_x = hub.x + (self.hub_radius + 4) * math.cos(angle)
                 dot_y = hub.y + (self.hub_radius + 4) * math.sin(angle)
+                r , g , b , _= arcade.csscolor.ROYAL_BLUE
                 arcade.draw_circle_filled(
                     dot_x,
                     dot_y,
                     13,
-                    arcade.csscolor.DARK_GRAY,
+                    (r,b,b, 100),
                     num_segments=100
                 )
                 arcade.draw_circle_filled(
@@ -206,8 +216,13 @@ class SimulationWindow(arcade.View):
                     anchor_y="center",
                 )
             for drone in self.main_map.drones:
+                r, g, b = drone.color 
                 arcade.draw_circle_filled(
-                    drone.x, drone.y, 10, drone.color, num_segments=100
+                    drone.x,
+                    drone.y,
+                    15,
+                    (r, g, b),
+                    num_segments=100
                 )
 
     def on_mouse_drag(
@@ -249,7 +264,7 @@ def main() -> None:
         sys.exit(1)
     parser = Parser(sys.argv[1])
     main_map = Map(**parser.main_parser())
-    window = arcade.Window(width=1920, height=1010)
+    window = arcade.Window(width=1920, height=900, fullscreen=True)
     game = SimulationWindow(main_map)
     game.setup()
     window.show_view(game)

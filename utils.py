@@ -28,12 +28,20 @@ class Hub:
         self.current_drones_count = 0
         self.cost = float("inf")
         self.is_goal_hub = False
+        self.in_zone = []
 
     def __lt__(self, other: "Hub") -> bool:
         return self.cost < other.cost
 
-    def __repr__(self) -> str:
-        return self.name
+    
+    def __str__(self) -> str:
+        # for index, key in enumerate(self.connections):
+        #     line = f"{self.name}-{key.name}: {key.connections[self]['on_road']}/{key.connections[self]['max_link_capacity']}"
+        #     if index <= len(self.connections) - 2:
+        #         line += " | "
+        #     connections_ += line
+        # return f"{self.name}: {self.current_drones_count}/{self.max_drones} <{connections_}>"
+        return  ""
 
 
 class Map:
@@ -42,6 +50,7 @@ class Map:
     ) -> None:
         self.graph = graph
         self.start = start
+        self.start.current_drones_count = nb_drones
         self.end = end
         self.end.cost = 0
         self.nb_drones = nb_drones
@@ -61,6 +70,7 @@ class Map:
             drone.can_move = False
             drone.finished = True
             if next:
+                drone.current.current_drones_count -= 1
                 next.connections[drone.current]["on_road"] += 1
                 next.current_drones_count += 1
                 drone.can_move = True
