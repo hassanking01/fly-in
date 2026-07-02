@@ -299,8 +299,8 @@ class Drone:
             self.next_x = self.next.x
             self.next_y = self.next.y
 
-        nx = (self.next_x - self.current.x) * 0.04
-        ny = (self.next_y - self.current.y) * 0.04
+        nx = (self.next_x - self.current.x) * 0.05
+        ny = (self.next_y - self.current.y) * 0.05
         self.x += nx
         self.y += ny
         if (self.x, self.y) == (self.next_x, self.next_y):

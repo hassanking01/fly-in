@@ -140,8 +140,7 @@ class SimulationWindow(arcade.View):
                 if self.is_sim_end:
                     self.puase = True
 
-    def draw_fan_outlines(self, x, y):
-        angles = [math.radians(angle) for angle in [45, 135, 315, 225]]
+    def draw_fan_outlines(self, x, y, angles):
         for angle in angles:
             dot_x = x + (14) * math.cos(angle)
             dot_y = y + (14) * math.sin(angle)
@@ -289,8 +288,10 @@ class SimulationWindow(arcade.View):
                     anchor_x="center",
                     anchor_y="center",
                 )
-            angles = [math.radians(angle) for angle in [45, 135, 315, 225]]
             for drone in self.main_map.drones:
+                dx = 0 if not drone.next else drone.next.x - drone.current.x 
+                dy = 0 if not drone.next else drone.next.y - drone.current.y 
+                angles = [math.radians(angle) + math.atan2(dy , dx)  for angle in [45, 135, 315, 225]]
                 r, g, b = drone.color
                 arcade.draw_circle_outline(
                         drone.x,
@@ -300,7 +301,7 @@ class SimulationWindow(arcade.View):
                         border_width=2,
                         num_segments=100
                     )
-                self.draw_fan_outlines(drone.x, drone.y)
+                self.draw_fan_outlines(drone.x, drone.y, angles)
                 arcade.draw_circle_filled(
                     drone.x,
                     drone.y,
