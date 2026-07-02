@@ -156,10 +156,6 @@ class SimulationWindow(arcade.View):
             arcade.draw_line(0, i, cx, i, color)
             arcade.draw_line(i, 0, i,  cy, color)
 
-        rect = arcade.rect.XYWH(self.width // 2, self.height - 80, 1900, 100)
-        arcade.draw_rect_filled(rect, (106, 90, 205, 200))
-        rect = arcade.rect.XYWH(self.width // 2, self.height - 80, 1890, 90)
-        arcade.draw_rect_filled(rect, (159, 182, 205, 100))
         arcade.draw_text(
             f"TURNS:   {self.turns}",
             self.width // 2,
