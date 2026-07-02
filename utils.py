@@ -7,6 +7,11 @@ import sys
 
 
 class Hub:
+    """
+    Represents a single hub (node) in the delivery graph:
+    its position, display color, drone capacity, current occupancy,
+    zone type, and cached pathfinding cost to the end hub.
+    """
 
     def __init__(
         self,
@@ -17,6 +22,18 @@ class Hub:
         max_drones: int = 1,
         zone: str = "normal",
     ) -> None:
+        """
+        Create a hub.
+
+        Args:
+        name: Unique identifier for the hub.
+        x: X coordinate on the map.
+        y: Y coordinate on the map.
+        color: Color name used to look up the hub's RGB display color.
+        max_drones: Maximum number of drones allowed at the hub simultaneously.
+        zone: Zone type
+        ('normal', 'priority', 'restricted', 'blocked') affecting traversal cost.
+        """
 
         self.x = x
         self.y = y
@@ -31,23 +48,37 @@ class Hub:
         self.in_zone = []
 
     def __lt__(self, other: "Hub") -> bool:
+        """
+        Compare two hubs by their pathfinding `cost` so Hub instances can be
+        ordered/heapified (used by heapq and sorted()).
+        """
         return self.cost < other.cost
 
-    
-    def __str__(self) -> str:
-        # for index, key in enumerate(self.connections):
-        #     line = f"{self.name}-{key.name}: {key.connections[self]['on_road']}/{key.connections[self]['max_link_capacity']}"
-        #     if index <= len(self.connections) - 2:
-        #         line += " | "
-        #     connections_ += line
-        # return f"{self.name}: {self.current_drones_count}/{self.max_drones} <{connections_}>"
-        return  ""
+    # def __str__(self) -> str:
+    #     # for index, key in enumerate(self.connections):
+    #     #     line = f"{self.name}-{key.name}: {key.connections[self]['on_road']}/{key.connections[self]['max_link_capacity']}"
+    #     #     if index <= len(self.connections) - 2:
+    #     #         line += " | "
+    #     #     connections_ += line
+    #     # return f"{self.name}: {self.current_drones_count}/{self.max_drones} <{connections_}>"
+    #     return  ""
 
 
 class Map:
+    """
+    Holds the full simulation state: the graph of hubs, the start/end hubs,
+    the drones, per-zone traversal costs,
+    and the logic to validate the graph and compute shortest-path costs to the
+    end hub.
+    """
     def __init__(
         self, graph: Dict[Hub, List[Hub]], start: Hub, end: Hub, nb_drones: int
     ) -> None:
+        """
+        Initialize the map: store the graph and endpoints, seed the start hub
+        with all drones, create the drone objects, validate that the graph is
+        connected and a path exists to the end, and compute each hub's cost.
+        """
         self.graph = graph
         self.start = start
         self.start.current_drones_count = nb_drones
@@ -61,6 +92,11 @@ class Map:
         self.compute_costs()
 
     def set_drones(self) -> None:
+        """
+        Place every drone at the start hub and compute each drone's
+        first move (`next` hub),
+        updating hub occupancy and link usage accordingly.
+        """
         for drone in self.drones:
             drone.graph = self.graph
             drone.current = self.start
@@ -78,6 +114,11 @@ class Map:
             drone.next = next
 
     def reset(self) -> None:
+        """
+        Reset all hubs and connections to their empty starting state and
+        re-place all drones at the start hub,
+        restarting the simulation from scratch.
+        """
         for hub in self.graph:
             hub.current_drones_count = 0
             for connection in hub.connections:
@@ -86,6 +127,11 @@ class Map:
         self.set_drones()
 
     def is_end_have_path(self) -> None:
+        """
+        Verify the end hub is reachable from the start hub via BFS
+        (ignoring blocked hubs);
+        raises Grapherror if not.
+        """
         queue: list[Hub] = [self.start]
         visited: set[Hub] = set()
         while queue:
@@ -104,6 +150,11 @@ class Map:
             )
 
     def check_disconnected_graph(self) -> None:
+        """
+        Verify every hub is reachable via BFS from the start/end hubs; if a
+        hub is disconnected, locate its defining line in the map file and
+        raise Grapherror with that line number.
+        """
         queue: list[Hub] = [self.start]
         visited: set[Hub] = set([self.end])
         while queue:
