@@ -32,7 +32,8 @@ class Hub:
         color: Color name used to look up the hub's RGB display color.
         max_drones: Maximum number of drones allowed at the hub simultaneously.
         zone: Zone type
-        ('normal', 'priority', 'restricted', 'blocked') affecting traversal cost.
+        ('normal', 'priority', 'restricted', 'blocked') affecting
+        traversal cost.
         """
 
         self.x = x
@@ -45,7 +46,6 @@ class Hub:
         self.current_drones_count = 0
         self.cost = float("inf")
         self.is_goal_hub = False
-        self.in_zone = []
 
     def __lt__(self, other: "Hub") -> bool:
         """
@@ -53,15 +53,6 @@ class Hub:
         ordered/heapified (used by heapq and sorted()).
         """
         return self.cost < other.cost
-
-    # def __str__(self) -> str:
-    #     # for index, key in enumerate(self.connections):
-    #     #     line = f"{self.name}-{key.name}: {key.connections[self]['on_road']}/{key.connections[self]['max_link_capacity']}"
-    #     #     if index <= len(self.connections) - 2:
-    #     #         line += " | "
-    #     #     connections_ += line
-    #     # return f"{self.name}: {self.current_drones_count}/{self.max_drones} <{connections_}>"
-    #     return  ""
 
 
 class Map:
@@ -146,7 +137,8 @@ class Map:
         if self.end not in visited:
             raise Grapherror(
                 0,
-                f"No valid path exists from '{self.start}' to '{self.end}'.",
+                "No valid path exists from "
+                f"'{self.start.name}' to '{self.end.name}'.",
             )
 
     def check_disconnected_graph(self) -> None:
@@ -185,12 +177,21 @@ class Map:
         cx: int,
         cy: int,
     ) -> None:
-
+        """
+        Rescale and translate every hub's (x, y) coordinates by `zoom`
+        and offset (cx, cy) so the graph is properly sized and centered for
+        on-screen rendering.
+        """
         for hub in self.graph:
             hub.x = hub.x * zoom + cx
             hub.y = hub.y * zoom + cy
 
     def compute_costs(self) -> None:
+        """
+        Run a Dijkstra-style traversal starting from the end hub, assigning
+        each reachable, non-blocked hub a `cost` equal to the cumulative zone
+        cost of the shortest path back to the end hub.
+        """
         heap: list[Hub] = [self.end]
         while heap:
             currnt = heapq.heappop(heap)
@@ -204,9 +205,18 @@ class Map:
 
 
 class Drone:
+    """
+    Represents a single drone moving through the hub graph: its current/target
+    hub, screen position, movement state, and pathfinding logic.
+    """
     counter = 1
 
     def __init__(self) -> None:
+        """
+        Initialize a drone with a unique auto-incrementing name, a random
+        display color, and default (unset) position, graph reference, and
+        movement flags.
+        """
         self.name = f"D{self.counter}"
         Drone.counter += 1
         self.current: Optional[Hub] = None
@@ -223,6 +233,13 @@ class Drone:
         self.end_hub = None
 
     def find_next(self, turns: int) -> Optional[Hub]:
+        """
+        Choose the next hub to move to from the drone's current hub,
+        preferring the lowest-cost neighbor(s) with free drone capacity and
+        free link bandwidth; alternates the tie-break order every other turn
+        using `turns` parity. Returns None if already at the goal or no valid
+        neighbor is available.
+        """
         if not self.current:
             return None
         if self.current.is_goal_hub:
@@ -258,6 +275,12 @@ class Drone:
         return None
 
     def update(self) -> None:
+        """
+        Advance the drone's (x, y) position one animation step toward `next`
+        hub. Handles the two-phase traversal required for 'restricted' zone
+        hubs (pause at the midpoint, then continue), and finalizes the move
+        (updating `current` and link occupancy) once the target is reached.
+        """
         if (
             not self.next
             or not self.current
@@ -281,18 +304,12 @@ class Drone:
         self.x += nx
         self.y += ny
         if (self.x, self.y) == (self.next_x, self.next_y):
+            self.finished = True
             if self.next.type == "restricted":
                 if not self.first_half:
                     self.first_half = True
-                else:
-                    self.first_half = False
-                    self.next.connections[self.current]["on_road"] -= 1
-                    self.current = self.next
-                    self.can_move = False
-                    # self.next = None
-            else:
-                self.next.connections[self.current]["on_road"] -= 1
-                self.current = self.next
-                self.can_move = False
-                # self.next = None
-            self.finished = True
+                    return
+            self.first_half = False
+            self.next.connections[self.current]["on_road"] -= 1
+            self.current = self.next
+            self.can_move = False

@@ -1,42 +1,75 @@
 class ParserError(Exception):
+    """
+    Base exception for malformed or invalid entries in the map definition file
+    (nb_drones, hub, connection, formatting, etc.). Typically raised with
+    (line_number, message) as args.
+    """
     pass
 
 
 class HubMetadataError(ParserError):
+    """
+    Raised when a hub's metadata block (zone/color/max_drones) is malformed or
+    contains an invalid value.
+    """
     pass
 
 
 class ConnectionEdgError(ParserError):
+    """
+    Raised when a connection's edge definition ('src-dest') is malformed.
+    """
     pass
 
 
 class ConnectionMetadataError(ParserError):
+    """
+    Raised when a connection's metadata block (max_link_capacity) is malformed
+    or contains an invalid value.
+    """
     pass
 
 
 class HubFormatError(ParserError):
+    """
+    Raised when a hub definition line doesn't match the expected
+    'name x y [metadata]' format, including duplicate names or coordinates.
+    """
     pass
 
 
 class Grapherror(Exception):
+    """
+    Raised for structural problems in the parsed graph, such as an unreachable
+    end hub or a disconnected hub.
+    """
     pass
 
 
 class Errors:
-    no_path_emogi = """⡴⠒⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣼⠉⠳⡆⠀
-⣇⠰⠉⢙⡄⠀⠀⣴⠖⢦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⣆⠁⠙⡆
-⠘⡇⢠⠞⠉⠙⣾⠃⢀⡼⠀⠀⠀⠀⠀⠀⠀⢀⣼⡀⠄⢷⣄⣀⠀⠀⠀⠀⠀⠀⠀⠰⠒⠲⡄⠀⣏⣆⣀⡍
-⠀⢠⡏⠀⡤⠒⠃⠀⡜⠀⠀⠀⠀⠀⢀⣴⠾⠛⡁⠀⠀⢀⣈⡉⠙⠳⣤⡀⠀⠀⠀⠘⣆⠀⣇⡼⢋⠀⠀⢱
-⠀⠘⣇⠀⠀⠀⠀⠀⡇⠀⠀⠀⠀⡴⢋⡣⠊⡩⠋⠀⠀⠀⠣⡉⠲⣄⠀⠙⢆⠀⠀⠀⣸⠀⢉⠀⢀⠿⠀⢸
-⠀⠀⠸⡄⠀⠈⢳⣄⡇⠀⠀⢀⡞⠀⠈⠀⢀⣴⣾⣿⣿⣿⣿⣦⡀⠀⠀⠀⠈⢧⠀⠀⢳⣰⠁⠀⠀⠀⣠⠃
-⠀⠀⠀⠘⢄⣀⣸⠃⠀⠀⠀⡸⠀⠀⠀⢠⣿⣿⣿⣿⣿⣿⣿⣿⣿⣆⠀⠀⠀⠈⣇⠀⠀⠙⢄⣀⠤⠚⠁⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡇⠀⠀⢠⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡄⠀⠀⠀⢹⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡀⠀⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡀⠀⠀⢘⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡇⠀⢰⣿⣿⣿⡿⠛⠁⠀⠉⠛⢿⣿⣿⣿⣧⠀⠀⣼⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⡀⣸⣿⣿⠟⠀⠀⠀⠀⠀⠀⠀⢻⣿⣿⣿⡀⢀⠇⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⡇⠹⠿⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢿⡿⠁⡏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠻⣤⣞⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢢⣀⣠⠇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⠲⢤⣀⣀⠀⢀⣀⣀⠤⠒⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀"""
+    no_path_emogi = """
+    ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⣴⡟⠻⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢰⡟⠛⢟⣷⡄⠀⠀
+⣿⣅⣶⠿⠻⣷⡀⠀⠀⠀⠀⣠⣤⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⢳⣼⠿⣿⣧⣄⠀
+⠻⣆⡏⠀⢀⣼⣷⣦⣄⢠⣾⠋⠘⢙⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀       ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣀⡀⠀⠀⢈⡿⡄⠀⢣⢹⡄
+⠀⠙⡇⢰⠟⠁⠰⠲⡝⡿⠉⠀⣠⡾⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣼⣿⣵⣶⣶⠿⣿⣶⣤⣄⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⠟⠫⢿⡆⠀⢸⣷⢧⡠⣬⡼⠃
+⠀⠀⢇⡞⠀⠀⣰⠷⠛⠁⠀⢰⡏⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣾⣿⠟⠉⠠⠀⠤⠠⣐⣯⠽⠍⠻⢗⣦⣄⠀⠀⠀⠀⠀⠀⠻⣦⠀⠙⡇⣰⡿⣯⠃⠉⢪⢻⡄
+⠀⠀⠸⣇⠀⢠⡇⠀⠀⠀⠀⣾⠀⠀⠀⠀⠀⠀⠀⢠⡾⢋⣿⣷⠟⣻⠟⠃⠀⠀⠀⠻⣿⢿⣶⣤⡀⠑⠈⢳⣄⠀⠀⠀⠀⠀⢸⠀⢤⠷⠋⠀⠉⡿⡜⠀⢹⡯
+⠀⠀⠀⢹⡆⠈⠁⢠⣦⡀⠀⢻⠀⠀⠀⠀⠀⠀⣴⠏⢰⡿⠋⠠⠴⠋⣀⣀⣀⣤⣀⣀⡈⠛⠈⠩⠻⠀⠀⠀⠙⣧⠀⠀⠀⠀⢸⠂⣤⡶⠀⠀⠸⠁⠀⢀⣼⠃
+⠀⠀⠀⠈⢷⡀⠀⠈⢣⡹⣦⣾⠀⠀⠀⠀⠀⣼⠁⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⣿⣿⣷⣤⡀⠀⠀⠀⠀⠀⢈⣧⡀⠀⠀⢸⣄⣿⠀⠀⠀⠀⠀⣠⡞⠃⠀
+⠀⠀⠀⠀⠈⠻⣆⣀⣀⣡⡟⠀⠀⠀⠀⠀⣼⢣⠀⠀⠀⠀⢀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡄⠀⠀⠀⠀⠈⡝⣇⠀⠀⠀⠙⢿⣖⣀⣀⣤⠞⠉⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠈⠉⠉⠉⠀⠀⠀⠀⠀⢰⣿⡎⠀⠀⠀⢠⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡄⠀⠀⠀⠀⢹⢻⡄⠀⠀⠀⠀⠉⠉⠉⠁⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⡇⡗⠀⠀⢀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡄⠀⠀⠀⠈⡎⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⡇⠃⠀⠀⣸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧⠀⠀⠀⠘⢀⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣗⡆⠀⢰⣿⣿⣿⣿⣿⣿⠿⠋⠉⠉⠉⠙⢿⣿⣿⣿⣿⣿⣿⡇⠀⠀⢰⢸⠇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⣿⠱⠀⣸⣿⣿⣿⣿⠿⠁⠀⠀⠀⠀⠀⠀⠀⠙⢿⣿⣿⣿⣿⣿⠀⠀⠌⡟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⣷⠀⣿⣿⣿⣿⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠻⣿⣿⣿⣿⡇⢀⣼⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⢀⠿⡿⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⠿⣿⡿⠃⢸⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⣦⣆⣰⠟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠠⣄⡀⣀⣸⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠛⠉⠳⣤⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⠞⠛⠶⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⠳⠦⠤⢄⣀⣀⣀⣀⡠⡤⠶⠛⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠉⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+    """
 
     @staticmethod
     def display_error(error: Exception, filepath: str = "") -> None:
@@ -57,7 +90,7 @@ class Errors:
             if "No valid path exists" in error_msg:
 
                 panel = Panel(
-                    f"[bold]{Errors.no_path_emogi}[/bold]",
+                    f"[bold yellow]{Errors.no_path_emogi}[/bold yellow]",
                     padding=(0, 50),
                     border_style="red",
                     title=title,

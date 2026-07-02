@@ -10,8 +10,18 @@ from error_classes import (
 
 
 class Parser:
+    """
+    Parses a map definition file into hubs, connections, and simulation
+    parameters (drone count, start/end hubs), validating syntax and raising
+    the appropriate error class on malformed input.
+    """
 
     def __init__(self, path: str) -> None:
+        """
+        Initialize the parser with the map file path and empty state for
+        tracked hub names, coordinates, the graph, connections,
+        and parsing flags.
+        """
         self.map_path = path
         self.zone_names: set[str] = set()
         self.coordinates: set[tuple[int, int]] = set()
@@ -33,6 +43,12 @@ class Parser:
     def get_hub_details(
         self, file_line: str, is_start_or_end: bool, nb_drones: int
     ) -> Dict[str, Any]:
+        """
+        Parse a single hub definition line of the form 'name x y [metadata]'
+        into its name, coordinates, and metadata (zone, color, max_drones),
+        validating the bracket/metadata syntax and applying defaults. Forces
+        max_drones to `nb_drones` when `is_start_or_end` is True.
+        """
         metadata_format_error = (
             "hub metadata must follow this format:"
             " [zone=<normal|priority|restricted>"
@@ -178,6 +194,10 @@ class Parser:
             axis: str,
             name: str
             ) -> int:
+        """
+        Convert a coordinate string to an int, raising HubFormatError with the
+        hub name and axis if it isn't a valid integer.
+        """
         try:
             coordinate_int = int(coordinate_str)
         except ValueError:
@@ -193,6 +213,11 @@ class Parser:
             str_x: str,
             str_y: str
             ) -> tuple[str, int, int]:
+        """
+        Cast and validate a hub's name and coordinates: ensures the
+        coordinates aren't already taken, the name isn't a duplicate, and the
+        name doesn't contain '-'. Returns (name, x, y).
+        """
         x = self.cast_coordinates(str_x, "X", name)
         y = self.cast_coordinates(str_y, "Y", name)
         if (x, y) in self.coordinates:
@@ -207,6 +232,11 @@ class Parser:
         return (name, x, y)
 
     def get_connection_details(self, edg: str) -> tuple[str, str, int]:
+        """
+        Parse a connection line of the form 'src-dest [max_link_capacity=N]'
+        into the source zone name, destination zone name, and max link
+        capacity, validating the '-' separator and metadata syntax.
+        """
         edg = " ".join(edg.split())
         data = edg.split(" ", 1)
         if "-" not in data[0]:
@@ -278,9 +308,17 @@ class Parser:
         return (src, dest, value)
 
     def get_key_value(self, sep: str, line: str) -> tuple[str, ...]:
+        """
+        Split `line` on `sep` and strip surrounding whitespace from each
+        resulting piece.
+        """
         return tuple(map(lambda x: x.strip(), line.split(sep)))
 
     def get_nb_drones(self, value: str) -> None:
+        """
+        Parse and store the drone count from the 'nb_drones' line's value,
+        raising ParserError if it is not a positive integer.
+        """
         try:
             self.nb_drones = int(value)
             valid = self.nb_drones > 0
@@ -290,6 +328,13 @@ class Parser:
             raise ParserError()
 
     def main_parser(self) -> Dict[str, Any]:
+        """
+        Read the map file line by line and parse 'nb_drones', 'hub',
+        'start_hub', 'end_hub', and 'connection' entries into hubs and a
+        bidirectional graph, enforcing required keywords, ordering, and
+        uniqueness rules. Returns a dict with the graph, start hub, end hub,
+        and drone count for building a Map.
+        """
         next_start = 0
         with open(self.map_path, mode="r") as file:
             for line_number, line in enumerate(file, start=1):
