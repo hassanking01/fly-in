@@ -8,7 +8,7 @@ import sys
 from rich.panel import Panel
 from rich.console import Console
 from rich.traceback import install
-
+import random
 
 install()
 
@@ -44,7 +44,7 @@ class SimulationWindow(arcade.View):
         self.is_sim_end = False
         arcade.load_font("Monoton-Regular.ttf")
         self.progress: float = 0
-
+        self.fan_progress: float = 0
     def on_mouse_scroll(
             self,
             x: int,
@@ -100,6 +100,8 @@ class SimulationWindow(arcade.View):
         """
         self.progress += (delta_time * 2)
         self.progress %= 360
+        self.fan_progress += (delta_time * 800)
+        self.fan_progress %= 360
         if not self.puase and not self.is_sim_end:
             all_moved: list[bool] = []
             moved_drones: list[Drone] = []
@@ -137,6 +139,50 @@ class SimulationWindow(arcade.View):
                 )
                 if self.is_sim_end:
                     self.puase = True
+
+    def draw_fan_outlines(self, x, y):
+        angles = [math.radians(angle) for angle in [45, 135, 315, 225]]
+        for angle in angles:
+            dot_x = x + (14) * math.cos(angle)
+            dot_y = y + (14) * math.sin(angle)
+            arcade.draw_circle_outline(
+                dot_x,
+                dot_y,
+                10,
+                (0, 0, 0, 255),
+                border_width=2,
+                num_segments=100
+            )
+    def draw_fans(self, drone: Drone, dot_x: float, dot_y: float):
+                    if ((drone.x, drone.y) != (drone.current.x, drone.current.y)):
+                        zero_angle = math.radians(self.fan_progress)
+                        ninety_angle = math.radians(self.fan_progress + 90)
+                    else:
+                        zero_angle = math.radians(0)
+                        ninety_angle = math.radians(90)
+                        
+                    line_start_x = dot_x + 4 * math.cos(zero_angle)
+                    line_start_y = dot_y  + 4 * math.sin(zero_angle)
+                    line_end_x = 2 * dot_x  - line_start_x
+                    line_end_y = 2 * dot_y - line_start_y
+                    arcade.draw_line(
+                        line_start_x,
+                        line_start_y,
+                        line_end_x,
+                        line_end_y,
+                        (0,0,0),
+                        line_width=2)
+                    line_start_x = dot_x + 4 * math.cos(ninety_angle)
+                    line_start_y = dot_y  + 4 * math.sin(ninety_angle)
+                    line_end_x = 2 * dot_x  - line_start_x
+                    line_end_y = 2 * dot_y - line_start_y
+                    arcade.draw_line(
+                        line_start_x,
+                        line_start_y,
+                        line_end_x,
+                        line_end_y,
+                        (0,0,0),
+                        line_width=2)
 
     def on_draw(self) -> None:
         """
@@ -234,7 +280,7 @@ class SimulationWindow(arcade.View):
                     num_segments=100
                 )
                 arcade.draw_text(
-                    f"{hub.type[0].upper()}",
+                    f"{hub.cost}",
                     dot_x - 1,
                     dot_y + 1,
                     arcade.csscolor.DARK_RED,
@@ -254,6 +300,14 @@ class SimulationWindow(arcade.View):
                         border_width=2,
                         num_segments=100
                     )
+                self.draw_fan_outlines(drone.x, drone.y)
+                arcade.draw_circle_filled(
+                    drone.x,
+                    drone.y,
+                    15,
+                    (r, g, b, 255),
+                    num_segments=100
+                )
                 for angle_ in angles:
                     dot_x = drone.x + (14) * math.cos(angle_)
                     dot_y = drone.y + (14) * math.sin(angle_)
@@ -264,21 +318,15 @@ class SimulationWindow(arcade.View):
                         (r, g, b, 255),
                         num_segments=100
                     )
+                    self.draw_fans(drone, dot_x, dot_y)
                     arcade.draw_circle_outline(
                         dot_x,
                         dot_y,
-                        10,
+                        6,
                         (0, 0, 0, 255),
-                        border_width=2,
+                        border_width=1,
                         num_segments=100
                     )
-                arcade.draw_circle_filled(
-                    drone.x,
-                    drone.y,
-                    15,
-                    (r, g, b, 255),
-                    num_segments=100
-                )
 
     def on_mouse_drag(
         self, x: int, y: int, dx: int, dy: int, buttons: int, modifiers: int
@@ -346,8 +394,8 @@ if __name__ == "__main__":
         Errors.display_error(e, sys.argv[1])
     except Grapherror as e:
         Errors.display_error(e, sys.argv[1])
-    except Exception as e:
-        Errors.display_error(e)
+    # except Exception as e:
+    #     Errors.display_error(e)
     except KeyboardInterrupt:
         print("""
  ▄████  ▄████▄ ▄████▄ ████▄  █████▄ ██  ██ ██████
