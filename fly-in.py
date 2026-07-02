@@ -43,8 +43,7 @@ class SimulationWindow(arcade.View):
         self.turns = 0
         self.is_sim_end = False
         arcade.load_font("Monoton-Regular.ttf")
-        self.progress_z: float = 0
-        self.progress_d: float = 0
+        self.progress: float = 0
 
     def on_mouse_scroll(
             self,
@@ -99,10 +98,8 @@ class SimulationWindow(arcade.View):
         each idle drone its next hub,
         and check whether the simulation has ended.
         """
-        self.progress_z += (delta_time * 2)
-        self.progress_d += (delta_time * 4)
-        self.progress_z %= 360
-        self.progress_d %= 360
+        self.progress += (delta_time * 2)
+        self.progress %= 360
         if not self.puase and not self.is_sim_end:
             all_moved: list[bool] = []
             moved_drones: list[Drone] = []
@@ -204,14 +201,14 @@ class SimulationWindow(arcade.View):
                         5,
                     )
                     visited.add(key)
-            new_r = math.sin(self.progress_z)
+            new = math.sin(self.progress)
             angle = math.radians(50)
             for hub in self.main_map.graph:
                 r, g, b = hub.color
                 arcade.draw_circle_filled(
                     hub.x,
                     hub.y,
-                    (self.hub_radius + 5) + (new_r * 5),
+                    (self.hub_radius + 5) + (new * 5),
                     (r, g, b, 100),
                     num_segments=100,
                 )
@@ -246,18 +243,9 @@ class SimulationWindow(arcade.View):
                     anchor_x="center",
                     anchor_y="center",
                 )
-            new_r = math.sin(self.progress_d)
-
+            angles = [math.radians(angle) for angle in [45, 135, 315, 225]]
             for drone in self.main_map.drones:
-                angles = [math.radians(angle) for angle in [45, 135, 315, 225]]
                 r, g, b = drone.color
-                arcade.draw_circle_filled(
-                    drone.x,
-                    drone.y,
-                    15 + (new_r * 5),
-                    (r, g, b, 155),
-                    num_segments=100
-                )
                 arcade.draw_circle_outline(
                         drone.x,
                         drone.y,
